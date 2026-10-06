@@ -146,19 +146,11 @@ function _thermDrawGuide(id) {
 
     // Point A marker (draggable)
     if (!q.markerA) {
-        q.markerA = L.marker([q.lat, q.lng], {
-            draggable: true,
-            icon: L.divIcon({
-                className: 'therm-marker-a',
-                html: `<div style="background:#3b82f6; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-                iconSize: [12, 12],
-                iconAnchor: [6, 6]
-            })
-        }).addTo(map);
+        q.markerA = createDraggableMarker([q.lat, q.lng]).addTo(map);
         q.layers.push(q.markerA);
 
         q.markerA.on('drag', (e) => {
-            const pos = e.target.getLatLng();
+            const pos = getMarkerPosition(e.target);
 
             // If B exists, preserve its bearing relative to the old center and keep distance = q.dist
             if (q.latB !== null) {
@@ -210,19 +202,11 @@ function _thermDrawGuide(id) {
 
         // Point B marker - made bigger and distinct
         if (!q.markerB) {
-            q.markerB = L.marker(pointB, {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'therm-marker-b',
-                    html: `<div style="background:#ef4444; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                })
-            }).addTo(map);
+            q.markerB = createDraggableMarker(pointB).addTo(map);
             q.layers.push(q.markerB);
 
             q.markerB.on('drag', (e) => {
-                const pos = e.target.getLatLng();
+                const pos = getMarkerPosition(e.target);
                 const centerPos = L.latLng(q.lat, q.lng);
 
                 const dist = centerPos.distanceTo(pos);
@@ -574,9 +558,6 @@ function _thermRenderCards() {
                     <div class="tent-card-hdr">
                         <span class="tent-card-title">${tf('THERM_CARD_TITLE', i + 1)} (Confirmed)</span>
                         <button class="ghost tent-card-del" onclick="removeThermometerQuestion(${q.id})" title="Remove">✕</button>
-                    </div>
-                    <div style="padding: 8px; font-size: 11px; color: #8b949e; text-align: center">
-                        Zone active. Use "Remove" to edit or delete.
                     </div>
                 </div>`;
             }

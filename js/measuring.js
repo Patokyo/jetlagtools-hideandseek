@@ -56,24 +56,15 @@ function _measCreateDraggableMarker(q, id) {
         q.marker = null;
     }
 
-    q.marker = L.marker([q.lat, q.lng], {
-        draggable: true,
-        icon: L.divIcon({
-            className: 'meas-marker',
-            html: `<div style="background:#111; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-            iconSize: [12,12],
-            iconAnchor: [6,6]
-        }),
-        zIndexOffset: 500
-    }).addTo(map);
+    q.marker = createDraggableMarker([q.lat, q.lng]).addTo(map);
 
     q.marker.on('drag', (e) => {
-        const pos = e.target.getLatLng();
+        const pos = getMarkerPosition(e.target);
         const coordEl = document.getElementById(`meas-coord-${id}`);
         if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
     });
     q.marker.on('dragend', (e) => {
-        const pos = e.target.getLatLng();
+        const pos = getMarkerPosition(e.target);
         q.lat = pos.lat;
         q.lng = pos.lng;
         const coordEl = document.getElementById(`meas-coord-${id}`);

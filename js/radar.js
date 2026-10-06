@@ -11,7 +11,6 @@ let _rqQuestions = [];
 let _rqNextId = 1;
 let _rqPickingId = null;
 let _rqMaskLayer = null; // dark shading over the excluded area
-let _rqOutlineLayer = null; // green outline around the possible region
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 function _rqCircle(q, steps = 128) {
@@ -65,11 +64,6 @@ function _rqUpdateOverlay() {
         map.removeLayer(_rqMaskLayer);
         _rqMaskLayer = null;
     }
-    if (_rqOutlineLayer) {
-        map.removeLayer(_rqOutlineLayer);
-        _rqOutlineLayer = null;
-    }
-
     const region = _rqComputeRegion();
     if (!region) {
         setStatus('');
@@ -88,63 +82,51 @@ function _rqUpdateOverlay() {
         world: region.worldRect,
     }).addTo(map);
 
-    _rqOutlineLayer = L.geoJSON(region.possible, {
-        style: { color: '#3fb950', weight: 2.5, fill: false },
-        interactive: false,
-    }).addTo(map);
-
     // Only meaningful when at least one yes-circle bounds the region
     if (region.hasYes) {
         setStatus(tf('status_rq_area', _rqFmtArea(turf.area(region.possible) / 1e6)), 'ok');
     }
 }
 
-// ── Per-question map layers (thin circle + draggable handle + label) ──────────
+// ── Per-question guide circle and draggable center handle ─────────────────────
 function _rqDrawQuestion(q) {
     _rqClearLayers(q);
     if (q.lat === null) return;
 
-    const answerState = q.answer;
-    const color = answerState === 'yes' ? '#3fb950' : answerState === 'no' ? '#f85149' : '#8b949e';
     const center = L.latLng(q.lat, q.lng);
+    q.layers = [];
 
-    const circle = L.circle(center, {
-        radius: q.km * 1000,
-        color,
-        weight: 2,
-        dashArray: answerState === null ? '6 4' : answerState === 'yes' ? undefined : '6 4',
-        fill: false,
-        interactive: false,
-    }).addTo(map);
-    const label = makeKmLabel(center, q.km, color).addTo(map);
-    // mark the label so we can remove it on confirm while keeping the circle
-    try { label._isRadiusLabel = true; } catch (e) {}
+    // Show a dashed guide only until the seeker answers Yes or No.
+    let guideCircle = null;
+    if (q.answer === null && !q.confirmed) {
+        guideCircle = L.circle(center, {
+            radius: q.km * 1000,
+            color: '#8b949e',
+            weight: 2,
+            dashArray: '6 4',
+            fill: false,
+            interactive: false,
+        }).addTo(map);
+        q.layers.push(guideCircle);
+    }
 
-    // Only create a draggable handle when the question is not confirmed
-    let handle = null;
     if (!q.confirmed) {
-        handle = makeDragHandle(center, color);
-        handle.on('drag', (e) => {
-        const c = e.target.getLatLng();
-        circle.setLatLng(c);
-        label.setLatLng(radiusLabelPos(c, q.km));
-    });
+        const handle = createDraggableMarker(center).addTo(map);
+        if (guideCircle) {
+            handle.on('drag', (e) => guideCircle.setLatLng(e.target.getLatLng()));
+        }
         handle.on('dragend', (e) => {
-        const c = e.target.getLatLng();
-        q.lat = c.lat;
-        q.lng = c.lng;
-        _rqRenderCards();
-        _rqUpdateOverlay();
-        updatePermalink();
-    });
-
+            const c = e.target.getLatLng();
+            q.lat = c.lat;
+            q.lng = c.lng;
+            _rqRenderCards();
+            _rqUpdateOverlay();
+            updatePermalink();
+        });
         q.handle = handle;
     } else {
         q.handle = null;
     }
-
-    // Track circle and label as persistent layers; handle is tracked separately
-    q.layers = [circle, label];
 }
 
 function _rqClearLayers(q) {
@@ -242,17 +224,8 @@ function rqConfirm(id) {
         try { map.removeLayer(q.handle); } catch (e) {}
         q.handle = null;
     }
-    // Remove any radius label but keep the circle so occlusion remains
-    if (Array.isArray(q.layers) && q.layers.length) {
-        q.layers = q.layers.filter((l) => {
-            if (l && l._isRadiusLabel) {
-                try { map.removeLayer(l); } catch (e) {}
-                return false;
-            }
-            return true;
-        });
-    }
     q.confirmed = true;
+    _rqDrawQuestion(q);
     _rqRenderCards();
     _rqUpdateOverlay();
     setStatus(`Radius ${id} confirmed`, 'ok');
