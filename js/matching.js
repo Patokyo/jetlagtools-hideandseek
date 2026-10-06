@@ -33,7 +33,7 @@ addMapClickHook((e) => {
     return true;
 });
 
-function _mqClearLayers(q) {
+function _mqClearLayers(q, { preserveMarker = false } = {}) {
     if (!q) return;
     if (q.maskLayer) {
         map.removeLayer(q.maskLayer);
@@ -43,7 +43,7 @@ function _mqClearLayers(q) {
         q.outlines.forEach((l) => map.removeLayer(l));
         q.outlines = [];
     }
-    if (q.marker) {
+    if (q.marker && !preserveMarker) {
         map.removeLayer(q.marker);
         q.marker = null;
     }
@@ -57,24 +57,15 @@ function _mqCreateDraggableMarker(q, id) {
         q.marker = null;
     }
 
-    q.marker = L.marker([q.lat, q.lng], {
-        draggable: true,
-        icon: L.divIcon({
-            className: 'mq-marker',
-            html: `<div style="background:#111; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6]
-        }),
-        zIndexOffset: 500,
-    }).addTo(map);
+    q.marker = createDraggableMarker([q.lat, q.lng]).addTo(map);
 
     q.marker.on('drag', (e) => {
-        const pos = e.target.getLatLng();
+        const pos = getMarkerPosition(e.target);
         const coordEl = document.getElementById(`mq-coord-${id}`);
         if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
     });
     q.marker.on('dragend', (e) => {
-        const pos = e.target.getLatLng();
+        const pos = getMarkerPosition(e.target);
         q.lat = pos.lat;
         q.lng = pos.lng;
         const coordEl = document.getElementById(`mq-coord-${id}`);
@@ -118,7 +109,7 @@ function mqSetLayer(id, layerId) {
     if (!q) return;
     if (q.confirmed) return;
     q.layerId = layerId || null;
-    _mqClearLayers(q);
+    _mqClearLayers(q, { preserveMarker: true });
     _mqRenderCards();
 }
 
@@ -239,7 +230,7 @@ async function mqRun(id) {
         setStatus(t('status_locked') || 'Question is confirmed', 'info');
         return;
     }
-    _mqClearLayers(q);
+    _mqClearLayers(q, { preserveMarker: true });
     if (!q.layerId) {
         showErrorPopup(t('matching_need_layer'));
         return;
@@ -301,38 +292,8 @@ async function mqRun(id) {
         return;
     }
 
-    // Create a marker at the picked point
-    if (q.marker) {
-        map.removeLayer(q.marker);
-        q.marker = null;
-    }
-    // Create a draggable marker so users can refine the picked location
-    q.marker = L.marker([q.lat, q.lng], {
-        draggable: true,
-        icon: L.divIcon({
-            className: 'mq-marker',
-            html: `<div style="background:#111; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6]
-        }),
-        zIndexOffset: 500,
-    }).addTo(map);
-
-    // While dragging, just update the coord display. On dragend, update q.lat/q.lng and re-run.
-    q.marker.on('drag', (e) => {
-        const pos = e.target.getLatLng();
-        const coordEl = document.getElementById(`mq-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
-    });
-    q.marker.on('dragend', (e) => {
-        const pos = e.target.getLatLng();
-        q.lat = pos.lat;
-        q.lng = pos.lng;
-        const coordEl = document.getElementById(`mq-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
-        // Re-run matching to update mask/outlines for the new location
-        mqRun(id);
-    });
+    // Keep the existing draggable marker, creating one only if this question has none.
+    if (!q.marker) _mqCreateDraggableMarker(q, id);
 
     if (q.answerYes) {
         // Yes -> keep only the selected cell visible: world with hole = selFeature

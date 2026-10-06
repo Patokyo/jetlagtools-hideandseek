@@ -78,6 +78,12 @@ async function _tentFetchPOIs(id) {
             })
             .sort((a, b) => a.name.localeCompare(b.name));
 
+        // Keep the previous selection when it is still in range; otherwise use
+        // the first in-range POI so the Voronoi and marker remain available.
+        const previousPOIId = q.selectedPOI?.id;
+        q.selectedPOI =
+            q.fetchedPOIs.find((p) => p.id === previousPOIId) ?? q.fetchedPOIs[0] ?? null;
+
         if (sel) {
             sel.innerHTML =
                 `<option value="">${t('tent_select_poi')}</option>` +
@@ -89,12 +95,9 @@ async function _tentFetchPOIs(id) {
                     .join('');
             sel.disabled = false;
         }
-        // Re-resolve the previous selection against the fresh POI list
-        if (q.selectedPOI) {
-            q.selectedPOI = q.fetchedPOIs.find((p) => p.id === q.selectedPOI.id) ?? null;
-            if (q.selectedPOI) _tentDraw(id);
-            else _tentClearLayers(q);
-        }
+
+        if (q.selectedPOI) _tentDraw(id);
+        else _tentClearLayers(q, { preserveMarker: true });
 
         setStatus(
             tf('tent_status_found', q.fetchedPOIs.length, t(label)),
@@ -124,17 +127,13 @@ function _tentCreateDraggableMarker(q, id) {
         try { map.removeLayer(q.marker); } catch (e) {}
         q.marker = null;
     }
-    q.marker = L.marker([q.centerLat, q.centerLng], {
-        draggable: true,
-        icon: L.divIcon({ className: 'tent-marker', html: '<div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;border:2px solid #fff"></div>', iconSize: [10,10], iconAnchor: [5,5] }),
-        zIndexOffset: 500,
-    }).addTo(map);
+    q.marker = createDraggableMarker([q.centerLat, q.centerLng]).addTo(map);
     q.marker.on('drag', (e) => {
-        const p = e.target.getLatLng();
+        const p = getMarkerPosition(e.target);
         updateTentCoordLabel(id, p);
     });
     q.marker.on('dragend', (e) => {
-        const p = e.target.getLatLng();
+        const p = getMarkerPosition(e.target);
         q.centerLat = p.lat;
         q.centerLng = p.lng;
         _tentDraw(id);
@@ -185,7 +184,7 @@ async function _tentDraw(id) {
     const q = _tentQuestions.find((x) => x.id === id);
     if (!q || !q.selectedPOI || q.fetchedPOIs.length === 0) return;
 
-    _tentClearLayers(q);
+    _tentClearLayers(q, { preserveMarker: true });
 
     const radiusKm = _tentKm(q);
     const circle = turf.circle([q.centerLng, q.centerLat], radiusKm, {
@@ -244,19 +243,10 @@ async function _tentDraw(id) {
         });
     }
 
-    // Only add markers if not confirmed
+    // Keep a draggable center marker above the Voronoi and POI layers.
     if (!q.confirmed) {
-        // Center dot
-        q.layers.push(
-            L.circleMarker([q.centerLat, q.centerLng], {
-                radius: 5,
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
-                fillOpacity: 1,
-                weight: 2,
-                interactive: false,
-            }).addTo(map),
-        );
+        if (!q.marker && q.centerLat !== null) _tentCreateDraggableMarker(q, id);
+        q.marker?.setZIndexOffset(1000);
 
         // POI markers
         const def = LAYER_DEFS[q.poiLayerId];
@@ -279,10 +269,10 @@ async function _tentDraw(id) {
 }
 
 // ── Clear all map layers for a question ───────────────────────────────────────
-function _tentClearLayers(q) {
+function _tentClearLayers(q, { preserveMarker = false } = {}) {
     q.layers.forEach((l) => map.removeLayer(l));
     q.layers = [];
-    if (q.marker) {
+    if (q.marker && !preserveMarker) {
         try { map.removeLayer(q.marker); } catch (e) {}
         q.marker = null;
     }
@@ -347,7 +337,7 @@ function tentSetLayer(id, layerId) {
     q.selectedPOI = null;
     q.fetchedPOIs = [];
     q.confirmed = false;
-    _tentClearLayers(q);
+    _tentClearLayers(q, { preserveMarker: true });
     const sel = document.getElementById(`tent-poi-select-${id}`);
     if (sel) sel.innerHTML = `<option value="">${t('tent_select_poi')}</option>`;
     if (q.centerLat !== null) _tentFetchPOIs(id);
