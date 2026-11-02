@@ -279,7 +279,18 @@
       </div>
 
       <div class="section" data-setup-section="true">
-        <div class="section-title" data-i18n="sec_layers">POI Layers</div>
+        <div class="section-head">
+          <div class="section-title" data-i18n="sec_layers">POI Layers</div>
+          <button
+            type="button"
+            class="layer-eye"
+            id="layerEyeAll"
+            title="Hide all layers"
+            aria-label="Hide all layers"
+            onclick="toggleAllLayersHidden()"
+            hidden
+          ></button>
+        </div>
         <div id="setupPoiLayerList"></div>
       </div>
 

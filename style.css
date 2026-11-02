@@ -802,6 +802,18 @@ button.danger:hover {
     font-size: 11px;
 }
 
+/* Section header with a small action button (e.g. POI Layers hide-all) */
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.section-head .section-title {
+    margin-bottom: 0;
+}
+
 /* Per-layer hide/show button in the setup layer list */
 .layer-eye {
     display: inline-flex;
@@ -815,6 +827,9 @@ button.danger:hover {
     background: transparent;
     flex-shrink: 0;
     opacity: 0.5;
+}
+.layer-eye[hidden] {
+    display: none;
 }
 .layer-eye:hover,
 .layer-eye:focus-visible {

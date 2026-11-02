@@ -432,6 +432,7 @@ const LAYER_EYE_OFF_ICON =
 
 function renderSetupPoiLayerList() {
     const container = document.getElementById('setupPoiLayerList');
+    updateHideAllButton();
     if (!container) return;
 
     container.innerHTML = POI_LAYER_IDS.map((id) => {
@@ -477,6 +478,41 @@ function renderGamePoiLayerPanel() {
 </label>`;
         })
         .join('');
+}
+
+// Hide or show every loaded layer at once (cache is always kept)
+function toggleAllLayersHidden() {
+    const ids = Object.keys(activeLayers);
+    if (!ids.length) return;
+
+    const hide = !ids.every((id) => hiddenLayers.has(id));
+    ids.forEach((id) => {
+        if (hide) {
+            hiddenLayers.add(id);
+            activeLayers[id].forEach((l) => map.removeLayer(l));
+        } else {
+            hiddenLayers.delete(id);
+            activeLayers[id].forEach((l) => l.addTo(map));
+        }
+    });
+
+    renderSetupPoiLayerList();
+}
+
+// Keep the hide-all button beside the POI Layers title in sync with the layers
+function updateHideAllButton() {
+    const btn = document.getElementById('layerEyeAll');
+    if (!btn) return;
+
+    const ids = Object.keys(activeLayers);
+    const allHidden = ids.length > 0 && ids.every((id) => hiddenLayers.has(id));
+    const label = allHidden ? 'Show all layers' : 'Hide all layers';
+
+    btn.hidden = ids.length === 0;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('aria-pressed', String(allHidden));
+    btn.innerHTML = allHidden ? LAYER_EYE_ICON : LAYER_EYE_OFF_ICON;
 }
 
 // Hide a cached layer without deleting it, so it can be shown again instantly
