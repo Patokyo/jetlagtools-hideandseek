@@ -802,6 +802,31 @@ button.danger:hover {
     font-size: 11px;
 }
 
+/* Per-layer hide/show button in the setup layer list */
+.layer-eye {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 2px;
+    border: none;
+    background: transparent;
+    flex-shrink: 0;
+    opacity: 0.5;
+}
+.layer-eye:hover,
+.layer-eye:focus-visible {
+    background: transparent;
+    opacity: 1;
+}
+.layer-row.is-hidden .layer-name,
+.layer-row.is-hidden .layer-count,
+.layer-row.is-hidden .dot {
+    opacity: 0.45;
+}
+
 /* ── Radius tool ──────────────────────────────────── */
 .coord-display {
     font-size: 11px;

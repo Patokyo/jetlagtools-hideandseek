@@ -40,7 +40,7 @@ function toggleSetupMode() {
                 if (!def || typeof def.render !== 'function') return;
                 const leafletLayers = def.render(id, data, def);
                 activeLayers[id] = leafletLayers;
-                leafletLayers.forEach((l) => l.addTo(map));
+                if (!hiddenLayers.has(id)) leafletLayers.forEach((l) => l.addTo(map));
             } catch (e) {
                 console.error('Error restoring cached layer', id, e);
             }

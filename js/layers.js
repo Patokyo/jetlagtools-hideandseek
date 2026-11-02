@@ -421,7 +421,14 @@ let activeLayers = {};
 const layerDataCache = {}; // id → last Overpass response (used for re-colour without re-fetch)
 const setupPoiLayerSelection = new Set();
 const gamePoiLayerSelection = new Set();
+const hiddenLayers = new Set(); // ids kept in the cache but not drawn on the map
 const POI_LAYER_IDS = Object.keys(LAYER_DEFS);
+
+// Eye icons for the per-layer hide/show button (Feather icons, MIT)
+const LAYER_EYE_ICON =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+const LAYER_EYE_OFF_ICON =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 
 function renderSetupPoiLayerList() {
     const container = document.getElementById('setupPoiLayerList');
@@ -431,12 +438,18 @@ function renderSetupPoiLayerList() {
         const def = LAYER_DEFS[id];
         const checked = setupPoiLayerSelection.has(id) ? 'checked' : '';
         const checkboxId = `setup-lyr-${id}`;
+        const isHidden = hiddenLayers.has(id);
+        const eyeLabel = `${isHidden ? 'Show' : 'Hide'} ${t(def.label)}`;
+        // Only cached (rendered) layers can be hidden; unloaded ones have no eye button
+        const eyeBtn = activeLayers[id]
+            ? `<button type="button" class="layer-eye" title="${esc(eyeLabel)}" aria-label="${esc(eyeLabel)}" aria-pressed="${isHidden}" onclick="event.preventDefault(); event.stopPropagation(); toggleLayerHidden('${id}')">${isHidden ? LAYER_EYE_ICON : LAYER_EYE_OFF_ICON}</button>`
+            : '';
         return `
-<label class="layer-row" for="${checkboxId}">
+<label class="layer-row${isHidden ? ' is-hidden' : ''}" for="${checkboxId}">
   <input type="checkbox" id="${checkboxId}" data-layer-id="${id}" ${checked} onchange="toggleSetupPoiLayer('${id}', this.checked)" />
   <div class="dot" style="background: ${def.color}"></div>
   <span class="layer-name">${t(def.label)}</span>
-  <span class="layer-count" id="cnt-${id}"></span>
+  <span class="layer-count" id="cnt-${id}"></span>${eyeBtn}
 </label>`;
     }).join('');
 }
@@ -466,6 +479,21 @@ function renderGamePoiLayerPanel() {
         .join('');
 }
 
+// Hide a cached layer without deleting it, so it can be shown again instantly
+function toggleLayerHidden(id) {
+    if (!activeLayers[id]) return;
+
+    if (hiddenLayers.has(id)) {
+        hiddenLayers.delete(id);
+        activeLayers[id].forEach((l) => l.addTo(map));
+    } else {
+        hiddenLayers.add(id);
+        activeLayers[id].forEach((l) => map.removeLayer(l));
+    }
+
+    renderSetupPoiLayerList();
+}
+
 async function toggleSetupPoiLayer(id, enabled) {
     if (enabled) {
         setupPoiLayerSelection.add(id);
@@ -473,6 +501,7 @@ async function toggleSetupPoiLayer(id, enabled) {
         await loadLayer(id);
     } else {
         setupPoiLayerSelection.delete(id);
+        hiddenLayers.delete(id);
         removeLayer(id);
         delete layerDataCache[id];
     }
@@ -530,6 +559,7 @@ async function loadLayer(id) {
 
         layerDataCache[id] = data;
         filterCachedPoisByGameZone();
+        hiddenLayers.delete(id);
         removeLayer(id);
         const leafletLayers = def.render(id, data, def);
         activeLayers[id] = leafletLayers;
@@ -572,7 +602,7 @@ function recolorActiveLayers() {
         delete activeLayers[id];
         const leafletLayers = LAYER_DEFS[id].render(id, cached, LAYER_DEFS[id]);
         activeLayers[id] = leafletLayers;
-        leafletLayers.forEach((l) => l.addTo(map));
+        if (!hiddenLayers.has(id)) leafletLayers.forEach((l) => l.addTo(map));
     });
     updateLayerDots();
 }
@@ -593,6 +623,7 @@ function clearAllLayers() {
     Object.keys(activeLayers).forEach(removeLayer);
     setupPoiLayerSelection.clear();
     gamePoiLayerSelection.clear();
+    hiddenLayers.clear();
     Object.keys(layerDataCache).forEach((id) => delete layerDataCache[id]);
     document.querySelectorAll('[id^="lyr-"]').forEach((cb) => (cb.checked = false));
     renderSetupPoiLayerList();
