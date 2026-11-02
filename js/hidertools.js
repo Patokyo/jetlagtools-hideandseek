@@ -4,6 +4,12 @@ let _hiderSelectedLayer = null;
 let _hiderRefPoint = null; // {lat, lng}
 let _hiderMarker = null;
 let _hiderZoneLayer = null;
+let _hiderStations = []; // [{ idx, name }] sorted alphabetically
+let _hiderSelectedIdx = null; // index into layerDataCache.stations.elements
+let _hiderHighlight = -1; // keyboard-highlighted row in the dropdown
+let _hiderShowAll = true; // ignore the typed query (used when opening the list)
+
+const HIDER_POI_MAX_RESULTS = 200;
 
 function hiderUpdateLayerList() {
     const select = document.getElementById('hider-layer-select');
@@ -25,24 +31,159 @@ function hiderUpdateLayerList() {
 }
 
 function hiderUpdatePoiList() {
-    const poiSelect = document.getElementById('hider-poi-select');
-    if (!poiSelect) return;
+    const poiInput = document.getElementById('hider-poi-search');
+    if (!poiInput) return;
 
-    poiSelect.innerHTML = '<option value="">-- Select Station --</option>';
+    // Cache the station list (sorted alphabetically) so the combobox can filter
+    // it without re-scanning the layer every keystroke. `idx` keeps the original
+    // position in layerDataCache.stations.elements, which hiderCreateZone() uses.
+    _hiderStations = [];
 
     const layerId = 'stations';
     const data = layerDataCache[layerId];
-    if (!data || !data.elements) return;
+    if (data && data.elements) {
+        data.elements.forEach((el, idx) => {
+            const center = getElementCenter(el);
+            if (!center) return;
+            const name = el.tags?.name ?? el.tags?.['name:de'] ?? 'Unnamed Station';
+            _hiderStations.push({ idx, name });
+        });
+        _hiderStations.sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+        );
+    }
 
-    data.elements.forEach((el, idx) => {
-        const center = getElementCenter(el);
-        if (!center) return;
-        const name = el.tags?.name ?? el.tags?.['name:de'] ?? 'Unnamed Station';
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = esc(name);
-        poiSelect.appendChild(opt);
+    // The layer data changed, so any previous pick is no longer reliable
+    _hiderSelectedIdx = null;
+    document.getElementById('hider-poi-select').value = '';
+    poiInput.value = '';
+    hiderClosePoiList();
+}
+
+// Stations matching the current query, plus the (lowercased) query itself
+function hiderPoiMatches() {
+    const query = _hiderShowAll
+        ? ''
+        : (document.getElementById('hider-poi-search')?.value ?? '').trim().toLowerCase();
+    const matches = query
+        ? _hiderStations.filter(s => s.name.toLowerCase().includes(query))
+        : _hiderStations;
+    return { query, matches };
+}
+
+function hiderRenderPoiList() {
+    const panel = document.getElementById('hider-poi-list');
+    if (!panel) return;
+
+    const { query, matches } = hiderPoiMatches();
+    panel.innerHTML = '';
+
+    if (matches.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'hider-poi-empty';
+        empty.textContent = _hiderStations.length === 0
+            ? 'No stations loaded — enable the Stations layer first'
+            : 'No matching stations';
+        panel.appendChild(empty);
+        return;
+    }
+
+    const shown = matches.slice(0, HIDER_POI_MAX_RESULTS);
+    shown.forEach((s, i) => {
+        const item = document.createElement('div');
+        item.className = 'hider-poi-item' + (i === _hiderHighlight ? ' active' : '');
+        item.textContent = s.name;
+        item.setAttribute('role', 'option');
+        item.onmousedown = (e) => {
+            // Keep focus so the input's blur handler does not close the panel first
+            e.preventDefault();
+            hiderSelectPoi(s.idx);
+        };
+        panel.appendChild(item);
     });
+
+    if (matches.length > shown.length) {
+        const more = document.createElement('div');
+        more.className = 'hider-poi-more';
+        more.textContent = `… ${matches.length - shown.length} more — keep typing to narrow it down`;
+        panel.appendChild(more);
+    }
+}
+
+function hiderOpenPoiList() {
+    const panel = document.getElementById('hider-poi-list');
+    const poiInput = document.getElementById('hider-poi-search');
+    if (!panel || !poiInput) return;
+
+    // Re-opening after a pick shows every station again so another one can be chosen
+    _hiderShowAll = _hiderSelectedIdx !== null || poiInput.value.trim() === '';
+    _hiderHighlight = -1;
+    hiderRenderPoiList();
+    panel.hidden = false;
+    poiInput.setAttribute('aria-expanded', 'true');
+}
+
+function hiderClosePoiList() {
+    const panel = document.getElementById('hider-poi-list');
+    const poiInput = document.getElementById('hider-poi-search');
+    if (!panel) return;
+    panel.hidden = true;
+    _hiderHighlight = -1;
+    poiInput?.setAttribute('aria-expanded', 'false');
+}
+
+function hiderFilterPoiList() {
+    const panel = document.getElementById('hider-poi-list');
+    if (!panel) return;
+
+    _hiderShowAll = false;
+    _hiderHighlight = -1;
+    // Typing invalidates the current pick until an entry is chosen again
+    _hiderSelectedIdx = null;
+    document.getElementById('hider-poi-select').value = '';
+
+    hiderRenderPoiList();
+    panel.hidden = false;
+    document.getElementById('hider-poi-search')?.setAttribute('aria-expanded', 'true');
+}
+
+function hiderSelectPoi(idx) {
+    const station = _hiderStations.find(s => s.idx === Number(idx));
+    if (!station) return;
+
+    _hiderSelectedIdx = station.idx;
+    document.getElementById('hider-poi-select').value = String(station.idx);
+    document.getElementById('hider-poi-search').value = station.name;
+    hiderClosePoiList();
+}
+
+function hiderPoiKeydown(e) {
+    const panel = document.getElementById('hider-poi-list');
+    if (!panel) return;
+
+    const { matches } = hiderPoiMatches();
+    const max = Math.min(matches.length, HIDER_POI_MAX_RESULTS);
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (panel.hidden) {
+            hiderOpenPoiList();
+            return;
+        }
+        if (max === 0) return;
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        _hiderHighlight = (_hiderHighlight + step + max) % max;
+        hiderRenderPoiList();
+        document.querySelector('#hider-poi-list .hider-poi-item.active')
+            ?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+        if (!panel.hidden && _hiderHighlight >= 0 && _hiderHighlight < max) {
+            e.preventDefault();
+            hiderSelectPoi(matches[_hiderHighlight].idx);
+        }
+    } else if (e.key === 'Escape') {
+        hiderClosePoiList();
+    }
 }
 
 function hiderSetPoint(lat, lng) {
@@ -161,6 +302,14 @@ function hiderCreateZone() {
     if (occlusionLayer) {
         _hiderZoneLayer = occlusionLayer;
         _hiderZoneLayer.addTo(map);
+
+        // Zoom to the zone itself — the inverted mask's own bounds cover the world
+        const [minLng, minLat, maxLng, maxLat] = turf.bbox(geometry);
+        map.fitBounds(
+            L.latLngBounds([[minLat, minLng], [maxLat, maxLng]]).pad(0.15),
+            { maxZoom: 17 }
+        );
+
         setStatus(`Hiding zone created around ${esc(el.tags?.name ?? 'Station')}`, 'ok');
     } else {
         setStatus('Failed to create hiding zone', 'error');

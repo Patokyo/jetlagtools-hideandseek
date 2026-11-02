@@ -461,6 +461,19 @@ body.setup-mode #layerPanel {
     font-weight: 400 !important;
 }
 
+/* Text/number inputs in non-colored sidebar sections keep their dark background,
+   so undo the black text forced above (e.g. Game Area and Transit Lines inputs) */
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='text'],
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='number'] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='text']::placeholder,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='number']::placeholder {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
 /* Small text in the header should be white (subtitle under Jet Lag Maps) */
 .s-header small {
     color: #ffffff !important;
@@ -577,6 +590,50 @@ body.setup-mode #layerPanel {
     font-weight: 400 !important;
 }
 
+
+/* ── Hider Tools: station search combobox ─────────── */
+.hider-poi-combo {
+    position: relative;
+    width: 100%;
+}
+
+.hider-poi-combo > input[type='text'] {
+    width: 100%;
+}
+
+.hider-poi-list {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 1200;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.hider-poi-item {
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hider-poi-item:hover,
+.hider-poi-item.active {
+    background: rgba(88, 166, 255, 0.25);
+}
+
+.hider-poi-empty,
+.hider-poi-more {
+    padding: 6px 8px;
+    font-size: 11px;
+}
 
 /* ── Form controls ────────────────────────────────── */
 .row {
@@ -745,6 +802,46 @@ button.danger:hover {
     font-size: 11px;
 }
 
+/* Section header with a small action button (e.g. POI Layers hide-all) */
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.section-head .section-title {
+    margin-bottom: 0;
+}
+
+/* Per-layer hide/show button in the setup layer list */
+.layer-eye {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 2px;
+    border: none;
+    background: transparent;
+    flex-shrink: 0;
+    opacity: 0.5;
+}
+.layer-eye[hidden] {
+    display: none;
+}
+.layer-eye:hover,
+.layer-eye:focus-visible {
+    background: transparent;
+    opacity: 1;
+}
+.layer-row.is-hidden .layer-name,
+.layer-row.is-hidden .layer-count,
+.layer-row.is-hidden .dot {
+    opacity: 0.45;
+}
+
 /* ── Radius tool ──────────────────────────────────── */
 .coord-display {
     font-size: 11px;
@@ -775,6 +872,23 @@ button.danger:hover {
 }
 .radius-item:hover {
     opacity: 0.8;
+}
+
+/* Drag handle for reorderable transit lines (top entry draws on top) */
+.ri-drag {
+    cursor: grab;
+    opacity: 0.5;
+    font-size: 13px;
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+}
+.ri-drag:active {
+    cursor: grabbing;
+}
+.radius-item.dragging {
+    opacity: 0.4;
 }
 .radius-item .ri-info {
     flex: 1;
