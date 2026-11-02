@@ -102,6 +102,50 @@ body.setup-mode #layerPanel {
     margin-bottom: 8px;
 }
 
+/* ── Hider Tools: station search combobox ─────────── */
+.hider-poi-combo {
+    position: relative;
+    width: 100%;
+}
+
+.hider-poi-combo > input[type='text'] {
+    width: 100%;
+}
+
+.hider-poi-list {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 1200;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.hider-poi-item {
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hider-poi-item:hover,
+.hider-poi-item.active {
+    background: rgba(88, 166, 255, 0.25);
+}
+
+.hider-poi-empty,
+.hider-poi-more {
+    padding: 6px 8px;
+    font-size: 11px;
+}
+
 /* ── Form controls ────────────────────────────────── */
 .row {
     display: flex;
