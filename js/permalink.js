@@ -210,23 +210,39 @@ async function loadFromPermalink() {
             gameZone: [],
         };
 
-        // Only export cached layer data (if present)
+        // Only export cached layer data, always in the type/name/location shape
+        // (in case a cache entry came from somewhere other than loadLayer)
         Object.keys(layerDataCache).forEach((id) => {
-            state.layerDataCache[id] = layerDataCache[id];
+            state.layerDataCache[id] = normalizeLayerData(id, layerDataCache[id]);
         });
 
-        // Export bus routes in draw order, including their Overpass responses (if available)
+        // Export bus routes in draw order, as type/name/colour plus their paths
         busRouteOrder.forEach((id) => {
             const item = busRouteItems[id];
             if (!item) return;
-            state.busRoutes.push({ ref: item.ref, name: item.name, color: item.color, data: item.data });
+            state.busRoutes.push({
+                ref: item.ref,
+                name: item.name,
+                type: item.type,
+                color: item.color,
+                parts: item.parts,
+            });
         });
 
         // Export current city input and resolved city object (if any)
         try {
             state.city.input = document.getElementById('cityInput').value.trim();
         } catch (_) {}
-        if (typeof currentCity !== 'undefined' && currentCity) state.city.currentCity = currentCity;
+        // Only the location fields of the resolved city, not the whole Nominatim
+        // response (address parts, namedetails, …) that a restored old export may
+        // still carry.
+        if (typeof currentCity !== 'undefined' && currentCity) {
+            const c = {};
+            ['name', 'lat', 'lng', 'bbox', 'osm_type', 'osm_id'].forEach((k) => {
+                if (currentCity[k] != null) c[k] = currentCity[k];
+            });
+            state.city.currentCity = c;
+        }
 
         // Export game zone items (serialize geojson feature + metadata)
         try {
@@ -309,15 +325,17 @@ async function loadFromPermalink() {
         // Restore layers from cached Overpass results (no network requests)
         Object.entries(state.layerDataCache ?? {}).forEach(([id, data]) => {
             if (!LAYER_DEFS[id]) return;
-            layerDataCache[id] = data;
+            // Older exports still carry raw OSM tags; slim them on the way in
+            const slim = normalizeLayerData(id, data);
+            layerDataCache[id] = slim;
             setupPoiLayerSelection.add(id);
-            const leafletLayers = LAYER_DEFS[id].render(id, data, LAYER_DEFS[id]);
+            const leafletLayers = LAYER_DEFS[id].render(id, slim, LAYER_DEFS[id]);
             activeLayers[id] = leafletLayers;
             leafletLayers.forEach((l) => l.addTo(map));
             const cb = document.getElementById('lyr-' + id);
             if (cb) cb.checked = true;
             const cntEl = document.getElementById('cnt-' + id);
-            if (cntEl) cntEl.textContent = (data.elements?.length ?? 0) > 0 ? `(${data.elements.length})` : '';
+            if (cntEl) cntEl.textContent = (slim.elements?.length ?? 0) > 0 ? `(${slim.elements.length})` : '';
         });
         renderSetupPoiLayerList();
         renderGamePoiLayerPanel();
@@ -333,10 +351,13 @@ async function loadFromPermalink() {
                 try {
                     const id = ++busRouteCounter;
                     const color = br.color ?? BUS_ROUTE_COLORS[(id - 1) % BUS_ROUTE_COLORS.length];
-                    const layers = renderBusRoute(br.data, color);
+                    // New exports carry slimmed paths; old ones carry the raw response
+                    const parts = br.parts ?? routePartsFromOverpass(br.data ?? {});
+                    const layers = renderBusRouteParts(parts, color);
                     layers.forEach((l) => l.addTo(map));
                     const routeName = br.name ?? br.ref;
-                    busRouteItems[id] = { layers, color, name: routeName, ref: br.ref, custom: false, data: br.data };
+                    const routeType = br.type ?? parts[0]?.type ?? 'bus';
+                    busRouteItems[id] = { layers, color, name: routeName, ref: br.ref, type: routeType, parts, custom: false };
                     busRouteRefs.add(br.ref);
                     addBusRouteToList(id);
                 } catch (_) {

@@ -252,7 +252,7 @@ async function measRun(id) {
         .map((el) => {
             const c = getElementCenter(el);
             if (!c) return null;
-            return { id: el.id, lat: c.lat, lng: c.lng };
+            return { id: poiKey(c.lat, c.lng), lat: c.lat, lng: c.lng };
         })
         .filter(Boolean);
 

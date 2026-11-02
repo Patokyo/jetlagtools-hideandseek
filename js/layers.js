@@ -585,14 +585,16 @@ async function loadLayer(id) {
 
     try {
         const query = def.buildQuery(currentCity.bbox);
-        let data = await overpassFetch(query);
+        let raw = await overpassFetch(query);
 
         // OSM has no data here → try the layer's alternative source (e.g. the
         // swisstopo postal-code polygons for Switzerland)
-        if (def.fetchFallback && !data.elements?.length) {
-            data = await def.fetchFallback(currentCity.bbox);
+        if (def.fetchFallback && !raw.elements?.length) {
+            raw = await def.fetchFallback(currentCity.bbox);
         }
 
+        // Keep only type/name/location; OSM tags are discarded here
+        const data = normalizeLayerData(id, raw);
         layerDataCache[id] = data;
         filterCachedPoisByGameZone();
         hiddenLayers.delete(id);
@@ -681,8 +683,9 @@ function filterCachedPoisByGameZone() {
 
         const originalCount = data.elements.length;
         data.elements = data.elements.filter((el) => {
-            const c = getElementCenter(el);
-            return c ? gameZoneContains(c.lat, c.lng) : false;
+            // Area/line layers keep their geometry and are not point-filtered
+            if (el.lat == null || el.lng == null) return true;
+            return gameZoneContains(el.lat, el.lng);
         });
 
         if (data.elements.length !== originalCount) {

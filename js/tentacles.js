@@ -63,7 +63,7 @@ async function _tentFetchPOIs(id) {
             .map((el) => {
                 const c = getElementCenter(el);
                 if (!c) return null;
-                return { name: el.tags?.name ?? '?', lat: c.lat, lng: c.lng, id: el.id };
+                return { name: el.name || '?', lat: c.lat, lng: c.lng, id: poiKey(c.lat, c.lng) };
             })
             .filter(Boolean)
             .filter((p) => haversineKm({ lat: q.centerLat, lng: q.centerLng }, p) <= radiusKm);

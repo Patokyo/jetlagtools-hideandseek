@@ -251,7 +251,7 @@ async function mqRun(id) {
         .map((el) => {
             const c = getElementCenter(el);
             if (!c) return null;
-            return { id: el.id, lat: c.lat, lng: c.lng, name: el.tags?.name ?? '' };
+            return { id: poiKey(c.lat, c.lng), lat: c.lat, lng: c.lng, name: el.name ?? '' };
         })
         .filter(Boolean);
 

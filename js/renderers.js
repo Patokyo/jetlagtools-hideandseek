@@ -5,28 +5,23 @@
 // outline with no fill, so the player can see where the city ends.
 function renderCityBoundary(id, data, def) {
     const result = [];
-    let geojson;
-    try {
-        geojson = osmtogeojson(data);
-    } catch (e) {
-        console.error('osmtogeojson failed for city boundary', e);
-        return result;
-    }
 
-    geojson.features.forEach((feat) => {
-        const gtype = feat.geometry?.type;
-        if (!gtype || !gtype.includes('Polygon')) return;
+    (data.elements ?? []).forEach((el) => {
+        if (!el.geometry?.type?.includes('Polygon')) return;
 
-        const name = feat.properties?.name ?? currentCity?.name?.split(',')[0] ?? '';
-        const poly = L.geoJSON(feat, {
-            style: {
-                color: def.color,
-                weight: 4,
-                opacity: 0.9,
-                fillOpacity: 0,
-                dashArray: '12 7',
+        const name = el.name || currentCity?.name?.split(',')[0] || '';
+        const poly = L.geoJSON(
+            { type: 'Feature', properties: {}, geometry: el.geometry },
+            {
+                style: {
+                    color: def.color,
+                    weight: 4,
+                    opacity: 0.9,
+                    fillOpacity: 0,
+                    dashArray: '12 7',
+                },
             },
-        });
+        );
         if (name) poly.bindPopup(`<div class="popup-name">🏙️ ${esc(name)}</div>`);
         result.push(poly);
     });
@@ -40,47 +35,27 @@ function renderCityBoundary(id, data, def) {
 // from a fetchFallback such as the swisstopo postal-code service.
 function renderPLZ(id, data, def) {
     const result = [];
-    let features;
-    if (data.source === 'geojson') {
-        features = data.elements;
-    } else {
-        try {
-            features = osmtogeojson(data).features;
-        } catch (e) {
-            console.error('osmtogeojson failed', e);
-            return result;
-        }
-    }
 
     let ci = 0;
-    features.forEach((feat) => {
-        const gtype = feat.geometry?.type;
-        if (!gtype || !gtype.includes('Polygon')) return;
+    (data.elements ?? []).forEach((el) => {
+        if (!el.geometry?.type?.includes('Polygon')) return;
 
-        const plz =
-            feat.properties?.postal_code ??
-            feat.properties?.['addr:postcode'] ??
-            feat.properties?.name ??
-            '?';
+        const plz = el.name || '?';
         const color = PLZ_COLORS[ci++ % PLZ_COLORS.length];
 
-        const poly = L.geoJSON(feat, {
-            style: { color, fillColor: color, fillOpacity: 0.18, weight: 2, opacity: 0.85 },
-        });
+        const poly = L.geoJSON(
+            { type: 'Feature', properties: {}, geometry: el.geometry },
+            { style: { color, fillColor: color, fillOpacity: 0.18, weight: 2, opacity: 0.85 } },
+        );
         poly.on('mouseover', function () {
             this.setStyle({ fillOpacity: 0.45 });
         });
         poly.on('mouseout', function () {
             this.setStyle({ fillOpacity: 0.18 });
         });
-        const plzName = feat.properties?.name;
-        const plzAttr = feat.properties?.attribution;
         poly.bindPopup(
             `<div class="popup-name">${tf('plz_label', plz)}</div>` +
-                (plzName && String(plzName) !== String(plz)
-                    ? `<div class="popup-type">${esc(plzName)}</div>`
-                    : '') +
-                (plzAttr ? `<div class="popup-coords">${esc(plzAttr)}</div>` : ''),
+                (el.attribution ? `<div class="popup-coords">${esc(el.attribution)}</div>` : ''),
         );
         result.push(poly);
 
@@ -113,7 +88,7 @@ function deduplicateNearby(elements, maxMeters) {
     const placed = [];
     return elements.filter((el) => {
         const lat = el.lat ?? el.center?.lat;
-        const lng = el.lon ?? el.center?.lon;
+        const lng = el.lng ?? el.lon ?? el.center?.lon;
         if (lat == null) return true;
         const close = placed.some(([plat, plng]) => {
             const dlat = (lat - plat) * 111320;
@@ -125,9 +100,82 @@ function deduplicateNearby(elements, maxMeters) {
     });
 }
 
+// ── Data normalisation ────────────────────────────────────────────────────────
+// Everything we cache or export is reduced to type, name and location: point
+// layers keep lat/lng, area/line layers keep their GeoJSON geometry. All OSM
+// tags (toilets, opening hours, …) are dropped right after the fetch.
+const GEOMETRY_LAYERS = new Set(['cityboundary', 'plz', 'coastline', 'water']);
+
+function plzLabel(props) {
+    return String(props?.postal_code ?? props?.['addr:postcode'] ?? props?.name ?? '?');
+}
+
+function normalizeLayerData(id, data) {
+    if (!data) return { v: 2, elements: [] };
+    if (data.v === 2) return data; // already normalised
+
+    const raw = data.elements ?? [];
+    const elements = [];
+
+    if (id === 'coastline') {
+        raw.forEach((el) => {
+            if (el.type !== 'way' || !el.geometry?.length) return;
+            elements.push({
+                type: id,
+                name: el.tags?.name ?? '',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: el.geometry.map((p) => [p.lon, p.lat]),
+                },
+            });
+        });
+        return { v: 2, elements };
+    }
+
+    if (GEOMETRY_LAYERS.has(id)) {
+        let features = [];
+        if (data.source === 'geojson') {
+            features = raw.map((f) => ({ geometry: f.geometry, properties: f.properties }));
+        } else {
+            try {
+                features = osmtogeojson(data).features;
+            } catch (e) {
+                console.error('osmtogeojson failed while normalising ' + id, e);
+                features = [];
+            }
+        }
+        features.forEach((f) => {
+            if (!f.geometry?.type?.includes('Polygon')) return;
+            elements.push({
+                type: id,
+                name: id === 'plz' ? plzLabel(f.properties) : (f.properties?.name ?? ''),
+                geometry: f.geometry,
+                // Licensing credit for the postal-code fallback, not OSM tag data
+                ...(id === 'plz' && f.properties?.attribution
+                    ? { attribution: f.properties.attribution }
+                    : {}),
+            });
+        });
+        return { v: 2, elements };
+    }
+
+    raw.forEach((el) => {
+        const c = getElementCenter(el);
+        if (!c) return;
+        elements.push({
+            type: id,
+            name: el.tags?.name ?? el.tags?.['name:de'] ?? '',
+            lat: c.lat,
+            lng: c.lng,
+        });
+    });
+    return { v: 2, elements };
+}
+
 // ── POI points (hospitals, train stations, …) ────────────────────────────────
-// Draws each OSM node/way/relation as a coloured CircleMarker.
+// Draws each cached POI as a coloured CircleMarker.
 function getElementCenter(el) {
+    if (el.lat != null && el.lng != null) return { lat: el.lat, lng: el.lng }; // normalised
     if (el.type === 'node') return { lat: el.lat, lng: el.lon };
     if (el.center) return { lat: el.center.lat, lng: el.center.lon };
     if (el.bounds)
@@ -136,6 +184,11 @@ function getElementCenter(el) {
             lng: (el.bounds.minlon + el.bounds.maxlon) / 2,
         };
     return null;
+}
+
+// Stable key for a normalised POI, since cached elements carry no OSM id.
+function poiKey(lat, lng) {
+    return `${lat.toFixed(5)}_${lng.toFixed(5)}`;
 }
 
 function renderPOIs(id, data, def) {
@@ -151,15 +204,8 @@ function renderPOIs(id, data, def) {
         if (!center) return;
         const { lat, lng } = center;
 
-        const name = el.tags?.name ?? el.tags?.['name:de'] ?? t(def.label);
-        const type =
-            el.tags?.amenity ??
-            el.tags?.railway ??
-            el.tags?.tourism ??
-            el.tags?.leisure ??
-            el.tags?.historic ??
-            el.tags?.shop ??
-            '';
+        const name = el.name || t(def.label);
+        const type = el.type ?? '';
 
         const marker = L.circleMarker([lat, lng], {
             radius: 8,
@@ -177,11 +223,12 @@ function renderPOIs(id, data, def) {
             <div class="popup-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>`;
 
         // Ensure a stable id for the remove button in the popup
-        const elemId = el.id ?? `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+        const elemId = poiKey(lat, lng);
+        const samePoi = (e) => e.lat === lat && e.lng === lng;
         const removeBtnId = `remove-poi-${id}-${elemId}`;
         const removeBtnHtml = `\n<div style="margin-top:6px"><button id="${removeBtnId}" class="danger">✕ ${t('remove') || 'Remove'}</button></div>`;
 
-        if (id === 'busstops' && el.id) {
+        if (id === 'busstops') {
             let fetched = false;
             let fetching = false;
             marker.bindPopup(baseHtml() + `<div class="popup-routes"><div class="popup-routes-loading"><div class="popup-spinner"></div>${t('stop_lines_loading')}</div></div>` + removeBtnHtml);
@@ -197,7 +244,7 @@ function renderPOIs(id, data, def) {
                             if (!activeLayers[id].length) delete activeLayers[id];
                         }
                         if (layerDataCache[id]?.elements) {
-                            layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => e.id !== el.id);
+                            layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => !samePoi(e));
                         }
                         const cntEl = document.getElementById('cnt-' + id);
                         if (cntEl) {
@@ -212,7 +259,7 @@ function renderPOIs(id, data, def) {
                 fetching = true;
                 try {
                     const d = await overpassFetch(
-                        `[out:json][timeout:30];\n(\n  node(${el.id});\n  node(around:80,${lat},${lng})["public_transport"~"^(stop_position|platform)$"];\n);\nrelation(bn)["route"~"^(bus|tram|trolleybus|subway|light_rail)$"];\nout tags;`,
+                        `[out:json][timeout:30];\n(\n  node(around:80,${lat},${lng})["public_transport"~"^(stop_position|platform)$"];\n);\nrelation(bn)["route"~"^(bus|tram|trolleybus|subway|light_rail)$"];\nout tags;`,
                     );
                     const refs = [...new Set((d.elements ?? []).filter((r) => r.tags?.ref).map((r) => r.tags.ref))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
@@ -229,7 +276,7 @@ function renderPOIs(id, data, def) {
                                 if (!activeLayers[id].length) delete activeLayers[id];
                             }
                             if (layerDataCache[id]?.elements) {
-                                layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => e.id !== el.id);
+                                layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => !samePoi(e));
                             }
                             const cntEl = document.getElementById('cnt-' + id);
                             if (cntEl) {
@@ -251,7 +298,7 @@ function renderPOIs(id, data, def) {
                                 if (!activeLayers[id].length) delete activeLayers[id];
                             }
                             if (layerDataCache[id]?.elements) {
-                                layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => e.id !== el.id);
+                                layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => !samePoi(e));
                             }
                             const cntEl = document.getElementById('cnt-' + id);
                             if (cntEl) {
@@ -278,7 +325,7 @@ function renderPOIs(id, data, def) {
                         if (!activeLayers[id].length) delete activeLayers[id];
                     }
                     if (layerDataCache[id]?.elements) {
-                        layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => e.id !== el.id);
+                        layerDataCache[id].elements = layerDataCache[id].elements.filter((e) => !samePoi(e));
                     }
                     const cntEl = document.getElementById('cnt-' + id);
                     if (cntEl) {
@@ -307,12 +354,13 @@ function renderPOIs(id, data, def) {
 function renderCoastline(id, data, def) {
     const result = [];
     (data.elements ?? []).forEach((el) => {
-        if (el.type !== 'way' || !el.geometry?.length) return;
+        const coords = el.geometry?.coordinates;
+        if (!coords?.length) return;
         const line = L.polyline(
-            el.geometry.map((n) => [n.lat, n.lon]),
+            coords.map(([lng, lat]) => [lat, lng]),
             { color: def.color, weight: 4.5, opacity: 1.0 },
         );
-        if (el.tags?.name) line.bindPopup(`<div class="popup-name">🏖️ ${esc(el.tags.name)}</div>`);
+        if (el.name) line.bindPopup(`<div class="popup-name">🏖️ ${esc(el.name)}</div>`);
         result.push(line);
     });
     return result;
@@ -322,28 +370,23 @@ function renderCoastline(id, data, def) {
 // Converts OSM ways/relations to blue GeoJSON polygons.
 function renderWater(id, data, def) {
     const result = [];
-    let geojson;
-    try {
-        geojson = osmtogeojson(data);
-    } catch (e) {
-        console.error('osmtogeojson failed', e);
-        return result;
-    }
 
-    geojson.features.forEach((feat) => {
-        const gtype = feat.geometry?.type;
-        if (!gtype || !gtype.includes('Polygon')) return;
+    (data.elements ?? []).forEach((el) => {
+        if (!el.geometry?.type?.includes('Polygon')) return;
 
-        const name = feat.properties?.name ?? '';
-        const poly = L.geoJSON(feat, {
-            style: {
-                color: '#0369a1',
-                fillColor: def.color,
-                fillOpacity: 0.35,
-                weight: 2.5,
-                opacity: 1,
+        const name = el.name || '';
+        const poly = L.geoJSON(
+            { type: 'Feature', properties: {}, geometry: el.geometry },
+            {
+                style: {
+                    color: '#0369a1',
+                    fillColor: def.color,
+                    fillOpacity: 0.35,
+                    weight: 2.5,
+                    opacity: 1,
+                },
             },
-        });
+        );
         if (name) poly.bindPopup(`<div class="popup-name">💧 ${esc(name)}</div>`);
         result.push(poly);
     });
