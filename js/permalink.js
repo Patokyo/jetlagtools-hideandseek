@@ -42,8 +42,11 @@ function buildPermalink() {
         }
     });
 
-    // Bus routes — one `route` param per drawn line
-    Object.values(busRouteItems).forEach((item) => p.append('route', item.ref));
+    // Bus routes — one `route` param per drawn line, topmost line first
+    busRouteOrder.forEach((id) => {
+        const item = busRouteItems[id];
+        if (item) p.append('route', item.ref);
+    });
 
     // Tentacle questions — one `tent` param per question that has a center set
     // Format: poiType,radius,unit,lat,lng,selectedPoiId (0 = none)
@@ -169,9 +172,9 @@ async function loadFromPermalink() {
     // Leave the UI in single mode regardless of what was last restored
     setRadiusMode('single');
 
-    // Restore bus routes
+    // Restore bus routes — stored topmost first, but adding prepends to the list
     const routeInput = document.getElementById('busRouteInput');
-    for (const ref of p.getAll('route')) {
+    for (const ref of [...p.getAll('route')].reverse()) {
         routeInput.value = ref;
         await addBusRoute();
     }
@@ -212,8 +215,10 @@ async function loadFromPermalink() {
             state.layerDataCache[id] = layerDataCache[id];
         });
 
-        // Export bus routes including their Overpass responses (if available)
-        Object.values(busRouteItems).forEach((item) => {
+        // Export bus routes in draw order, including their Overpass responses (if available)
+        busRouteOrder.forEach((id) => {
+            const item = busRouteItems[id];
+            if (!item) return;
             state.busRoutes.push({ ref: item.ref, name: item.name, color: item.color, data: item.data });
         });
 
@@ -323,7 +328,8 @@ async function loadFromPermalink() {
 
         // Restore bus routes from included Overpass responses
         if (Array.isArray(state.busRoutes)) {
-            for (const br of state.busRoutes) {
+            // Stored topmost first, but adding prepends to the list
+            for (const br of [...state.busRoutes].reverse()) {
                 try {
                     const id = ++busRouteCounter;
                     const color = br.color ?? BUS_ROUTE_COLORS[(id - 1) % BUS_ROUTE_COLORS.length];
@@ -332,7 +338,7 @@ async function loadFromPermalink() {
                     const routeName = br.name ?? br.ref;
                     busRouteItems[id] = { layers, color, name: routeName, ref: br.ref, custom: false, data: br.data };
                     busRouteRefs.add(br.ref);
-                    addBusRouteListEntry(id, br.ref, routeName, color);
+                    addBusRouteToList(id);
                 } catch (_) {
                     /* skip problematic entries */
                 }

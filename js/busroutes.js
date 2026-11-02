@@ -5,6 +5,7 @@ let BUS_ROUTE_COLORS = COLOR_THEMES[colorMode].busRoute;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let busRouteItems = {}; // id → { layers, color, name, ref }
+let busRouteOrder = []; // ids, top entry = drawn on top of the others
 let busRouteRefs = new Set();
 let busRouteCounter = 0;
 
@@ -43,18 +44,20 @@ function renderBusRoute(data, color) {
     return layers;
 }
 
-// ── Add a list entry to the sidebar ──────────────────────────────────────────
-function addBusRouteListEntry(id, ref, name, color) {
-    const list = document.getElementById('busRouteList');
+// ── Sidebar list (the top entry is drawn above the ones below it) ────────────
+function createBusRouteListEntry(id) {
+    const entry = busRouteItems[id];
     const item = document.createElement('div');
     item.className = 'radius-item';
     item.id = 'br-' + id;
+    item.dataset.routeId = String(id);
     item.innerHTML = `
-        <div class="dot" style="background:${color};flex-shrink:0"></div>
-        <input type="color" class="br-color" value="${color}" title="${t('lbl_change_color') || 'Change color'}" style="margin-left:6px" />
+        <span class="ri-drag" draggable="true" title="Drag to reorder (top = drawn on top)">⠿</span>
+        <div class="dot" style="background:${entry.color};flex-shrink:0"></div>
+        <input type="color" class="br-color" value="${entry.color}" title="${t('lbl_change_color') || 'Change color'}" style="margin-left:6px" />
         <div class="ri-info">
-            <div>${t('lbl_line')} ${esc(ref)}</div>
-            <div class="ri-lat">${esc(name)}</div>
+            <div>${t('lbl_line')} ${esc(entry.ref)}</div>
+            <div class="ri-lat">${esc(entry.name)}</div>
         </div>
         <button class="danger" title="✕">✕</button>
     `;
@@ -66,17 +69,88 @@ function addBusRouteListEntry(id, ref, name, color) {
     const colorInput = item.querySelector('.br-color');
     colorInput.addEventListener('input', (e) => {
         const newColor = e.target.value;
-        const entry = busRouteItems[id];
-        if (!entry) return;
-        entry.color = newColor;
-        entry.custom = true; // remember that user customized this route
-        entry.layers.forEach((l) => l.setStyle?.({ color: newColor }));
+        const route = busRouteItems[id];
+        if (!route) return;
+        route.color = newColor;
+        route.custom = true; // remember that user customized this route
+        route.layers.forEach((l) => l.setStyle?.({ color: newColor }));
         const dot = item.querySelector('.dot');
         if (dot) dot.style.background = newColor;
         updatePermalink();
     });
 
-    list.appendChild(item);
+    return item;
+}
+
+function renderBusRouteList() {
+    const list = document.getElementById('busRouteList');
+    if (!list) return;
+    initBusRouteDragAndDrop();
+    list.innerHTML = '';
+    busRouteOrder.forEach((id) => {
+        if (busRouteItems[id]) list.appendChild(createBusRouteListEntry(id));
+    });
+}
+
+// New lines go to the top of the list, i.e. they are drawn above older ones
+function addBusRouteToList(id) {
+    busRouteOrder = busRouteOrder.filter((x) => x !== id);
+    busRouteOrder.unshift(id);
+    renderBusRouteList();
+}
+
+// Stack the map lines so that the list order is the draw order
+function applyBusRouteZOrder() {
+    for (let i = busRouteOrder.length - 1; i >= 0; i--) {
+        const entry = busRouteItems[busRouteOrder[i]];
+        if (!entry) continue;
+        entry.layers.forEach((l) => l.bringToFront?.());
+    }
+}
+
+function applyBusRouteOrderFromDom() {
+    const list = document.getElementById('busRouteList');
+    if (!list) return;
+    busRouteOrder = [...list.querySelectorAll('[data-route-id]')].map((el) => Number(el.dataset.routeId));
+    applyBusRouteZOrder();
+    updatePermalink();
+}
+
+// Drag the ⠿ handle to change which line is drawn on top
+function initBusRouteDragAndDrop() {
+    const list = document.getElementById('busRouteList');
+    if (!list || list.dataset.dndReady) return;
+    list.dataset.dndReady = '1';
+
+    list.addEventListener('dragstart', (e) => {
+        const item = e.target.closest?.('.ri-drag')?.closest('[data-route-id]');
+        if (!item) {
+            e.preventDefault();
+            return;
+        }
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.routeId);
+        e.dataTransfer.setDragImage?.(item, 16, 16);
+    });
+
+    list.addEventListener('dragover', (e) => {
+        const dragging = list.querySelector('.dragging');
+        const target = e.target.closest?.('[data-route-id]');
+        if (!dragging || !target || target === dragging) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = target.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        list.insertBefore(dragging, after ? target.nextSibling : target);
+    });
+
+    list.addEventListener('drop', (e) => e.preventDefault());
+
+    list.addEventListener('dragend', () => {
+        list.querySelector('.dragging')?.classList.remove('dragging');
+        applyBusRouteOrderFromDom();
+    });
 }
 
 // ── Load and draw a bus route ─────────────────────────────────────────────────
@@ -129,7 +203,7 @@ out geom;`;
         busRouteItems[id].data = data; // Store the original Overpass response
         busRouteRefs.add(ref);
 
-        addBusRouteListEntry(id, ref, routeName, color);
+        addBusRouteToList(id);
         setStatus(tf('status_route_loaded', ref, data.elements.length), 'ok');
         input.value = '';
         updatePermalink();
@@ -146,6 +220,7 @@ function removeBusRoute(id) {
     busRouteRefs.delete(busRouteItems[id].ref);
     busRouteItems[id].layers.forEach((l) => map.removeLayer(l));
     delete busRouteItems[id];
+    busRouteOrder = busRouteOrder.filter((routeId) => routeId !== id);
     document.getElementById('br-' + id)?.remove();
     updatePermalink();
 }
@@ -154,6 +229,9 @@ function removeBusRoute(id) {
 function clearAllBusRoutes() {
     Object.keys(busRouteItems).forEach((id) => removeBusRoute(Number(id)));
 }
+
+// ── Enable drag-to-reorder once the sidebar list exists ──────────────────────
+initBusRouteDragAndDrop();
 
 // ── Re-colour existing routes after a theme change ───────────────────────────
 function recolorBusRoutes() {

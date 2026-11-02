@@ -873,6 +873,23 @@ button.danger:hover {
 .radius-item:hover {
     opacity: 0.8;
 }
+
+/* Drag handle for reorderable transit lines (top entry draws on top) */
+.ri-drag {
+    cursor: grab;
+    opacity: 0.5;
+    font-size: 13px;
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+}
+.ri-drag:active {
+    cursor: grabbing;
+}
+.radius-item.dragging {
+    opacity: 0.4;
+}
 .radius-item .ri-info {
     flex: 1;
     line-height: 1.3;
