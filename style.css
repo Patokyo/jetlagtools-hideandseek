@@ -50,6 +50,18 @@ body {
     color: #f0883e;
     letter-spacing: -0.3px;
 }
+.s-header h1 {
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+    text-transform: uppercase;
+    font-weight: 800;
+    font-size: 18px;
+    color: #ffffff;
+}
+.s-header small {
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+    text-transform: none;
+    color: #c9d1d9;
+}
 .s-header small {
     color: #8b949e;
     font-size: 11px;
@@ -71,9 +83,9 @@ body.setup-mode [data-setup-only] {
 body:not(.setup-mode) [data-setup-only] {
     display: none !important;
 }
-body:not(.setup-mode) #styleFab,
-body:not(.setup-mode) #printFab,
-body:not(.setup-mode) #importStateFab,
+/* Hide locate, boundary and layer FABs during setup mode; show in play mode */
+body.setup-mode #locateFab,
+body.setup-mode #boundaryFab,
 body.setup-mode #layerFab,
 body.setup-mode #layerPanel {
     display: none !important;
@@ -89,9 +101,9 @@ body.setup-mode #layerPanel {
     min-width: 90px;
 }
 #setupMenuBtn.active {
-    background: #f0883e;
+    background: #ffffff;
     color: #0d1117;
-    border-color: #f0883e;
+    border-color: #ffffff;
 }
 .section-title {
     font-size: 10px;
@@ -101,6 +113,470 @@ body.setup-mode #layerPanel {
     color: #8b949e;
     margin-bottom: 8px;
 }
+
+/* Reworked UI: section title styling per design */
+.section-title {
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+/* Colored section headers in sidebar */
+.section.matching {
+    background: #222f40;
+    color: #ffffff;
+}
+.section.matching .section-title {
+    color: #ffffff;
+}
+.section.matching, .section.matching * {
+    color: #ffffff;
+}
+.section.matching .layers-details > summary::after {
+    color: #ffffff;
+}
+.section.measuring {
+    background: #50a168;
+    color: #ffffff;
+}
+.section.measuring .section-title {
+    color: #ffffff;
+}
+.section.measuring, .section.measuring * {
+    color: #ffffff;
+}
+.section.measuring .layers-details > summary::after {
+    color: #ffffff;
+}
+.section.thermometer {
+    background: #ffbe40;
+    color: #ffffff;
+}
+.section.thermometer .section-title {
+    color: #ffffff;
+}
+.section.thermometer, .section.thermometer * {
+    color: #ffffff;
+}
+.section.thermometer .layers-details > summary::after {
+    color: #ffffff;
+}
+.section.radar {
+    background: #f7783d;
+    color: #ffffff;
+}
+.section.radar .section-title {
+    color: #ffffff;
+}
+.section.radar, .section.radar * {
+    color: #ffffff;
+}
+.section.radar .layers-details > summary::after {
+    color: #ffffff;
+}
+.section.photos {
+    background: #89b6c9;
+    color: #ffffff;
+}
+.section.photos .section-title {
+    color: #ffffff;
+}
+.section.photos, .section.photos * {
+    color: #ffffff;
+}
+.section.photos .layers-details > summary::after {
+    color: #ffffff;
+}
+/* Hider Tools colored section */
+.section.hider {
+    background: #346ec9ff;
+    color: #ffffff;
+}
+.section.hider .section-title {
+    color: #ffffff;
+}
+.section.hider, .section.hider * {
+    color: #ffffff;
+}
+.section.hider .layers-details > summary::after {
+    color: #ffffff;
+}
+
+/* Tentacles colored section */
+.section.tentacles {
+    background: #9372AB;
+    color: #ffffff;
+}
+.section.tentacles .section-title {
+    color: #ffffff;
+}
+.section.tentacles, .section.tentacles * {
+    color: #ffffff;
+}
+.section.tentacles .layers-details > summary::after {
+    color: #ffffff;
+}
+
+/* Ensure text on colored sections is white where needed */
+.section.matching,
+.section.measuring,
+.section.thermometer,
+.section.radar,
+.section.photos,
+.section.tentacles,
+.section.hider {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Jet Lag Maps title: white on red background */
+.s-header {
+    background: #ec242a;
+}
+.s-header h1 {
+    color: #ffffff;
+}
+
+/* ----------------------------
+   Light theme for sidebar/UI
+   ---------------------------- */
+/* Make the sidebar and UI panels light while keeping colored sections intact */
+#sidebar {
+    background: #ffffff;
+    color: #0d1117;
+    border-right: 1px solid #e6e6e6;
+}
+
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) {
+    background: #ffffff;
+    color: #0d1117;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+/* Panels and popovers that belong to the UI */
+#layerPanel,
+#stylePopover,
+#boundaryPopover,
+#about-footer,
+#statusToast.show {
+    background: #ffffff;
+    color: #0d1117;
+    border: 1px solid #e6e6e6;
+}
+
+/* Cards and small panels inside non-colored sidebar sections */
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .tent-card,
+#sidebar .cl-entry,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .tent-coord,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .sl-list,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .radius-item,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .coord-display {
+    background: #ffffff;
+    color: #0d1117;
+    border: 1px solid #e6e6e6;
+}
+
+/* Buttons in the sidebar: ghost buttons and active accents */
+#sidebar button.ghost {
+    color: #6b6b6b;
+    border-color: #e6e6e6;
+}
+#sidebar button.ghost:hover {
+    background: #fafafa;
+    color: #0d1117;
+}
+
+/* Muted / small text: dark on light backgrounds, non-bold */
+#sidebar small,
+#sidebar .cl-badge,
+#sidebar .layer-count,
+#sidebar .np-label,
+#sidebar .nc-lbl,
+#sidebar .sl-len,
+#sidebar .sl-more,
+#sidebar .admin-n,
+#sidebar .coord-display,
+#sidebar .popup-coords {
+    color: #ffffff;
+    font-weight: 400;
+}
+
+/* Ensure elements inside colored sections keep white text */
+#sidebar .section.matching *,
+#sidebar .section.measuring *,
+#sidebar .section.thermometer *,
+#sidebar .section.radar *,
+#sidebar .section.photos *,
+#sidebar .section.tentacles *,
+#sidebar .section.hider * {
+    color: #ffffff !important;
+    font-weight: 400 !important;
+}
+
+/* Make buttons inside colored sections visible: white text on a subtle translucent background */
+#sidebar .section.matching button,
+#sidebar .section.measuring button,
+#sidebar .section.thermometer button,
+#sidebar .section.radar button,
+#sidebar .section.photos button,
+#sidebar .section.tentacles button,
+#sidebar .section.hider button {
+    background: rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+/* Ensure full-width add buttons match the above */
+#sidebar .section.matching button[style],
+#sidebar .section.measuring button[style],
+#sidebar .section.thermometer button[style],
+#sidebar .section.radar button[style],
+#sidebar .section.photos button[style],
+#sidebar .section.tentacles button[style],
+#sidebar .section.hider button[style] {
+    background: rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+}
+
+/* Ensure cards (question cards/popups) inside colored sections are dark so white text remains readable */
+#sidebar .section.matching .tent-card *,
+#sidebar .section.measuring .tent-card *,
+#sidebar .section.thermometer .tent-card *,
+#sidebar .section.radar .tent-card *,
+#sidebar .section.photos .tent-card *,
+#sidebar .section.tentacles .tent-card *,
+#sidebar .section.hider .tent-card * {
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+#sidebar .section.measuring .tent-card {
+    background-color: #50a168 !important;
+    background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
+    background-blend-mode: multiply;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+#sidebar .section.thermometer .tent-card {
+    background-color: #ffbe40 !important;
+    background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
+    background-blend-mode: multiply;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+#sidebar .section.radar .tent-card {
+    background-color: #f7783d !important;
+    background-image: linear-gradient(rgba(0,0,0,0.14), rgba(0,0,0,0.14));
+    background-blend-mode: multiply;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+#sidebar .section.photos .tent-card {
+    background-color: #89b6c9 !important;
+    background-image: linear-gradient(rgba(0,0,0,0.10), rgba(0,0,0,0.10));
+    background-blend-mode: multiply;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+#sidebar .section.tentacles .tent-card {
+    background-color: #9372AB !important;
+    background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
+    background-blend-mode: multiply;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Force all text inside these cards to white unless explicitly overridden */
+#sidebar .section.matching .tent-card,
+#sidebar .section.measuring .tent-card,
+#sidebar .section.thermometer .tent-card,
+#sidebar .section.radar .tent-card,
+#sidebar .section.photos .tent-card,
+#sidebar .section.tentacles .tent-card,
+#sidebar .section.hider .tent-card {
+    color: #ffffff !important;
+}
+
+/* Final override: force white text for every element inside Hider Tools,
+   including elements with inline `style` attributes, and ensure Lexend title */
+#sidebar .section.hider,
+#sidebar .section.hider *,
+#sidebar .section.hider [style] {
+    color: #ffffff !important;
+}
+
+#sidebar .section.hider .section-title {
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif !important;
+    color: #ffffff !important;
+}
+
+/* Make pick buttons and controls visibly match other colored sections */
+#sidebar .section.hider .tent-pick-btn,
+#sidebar .section.hider .tent-pick-btn * {
+    color: #ffffff !important;
+}
+
+/* Fix select/input inside colored section cards to be dark with white text */
+#sidebar .section.matching .tent-card select,
+#sidebar .section.measuring .tent-card select,
+#sidebar .section.thermometer .tent-card select,
+#sidebar .section.radar .tent-card select,
+#sidebar .section.photos .tent-card select,
+#sidebar .section.tentacles .tent-card select,
+#sidebar .section.hider .tent-card select,
+#sidebar .section.matching .tent-card input,
+#sidebar .section.measuring .tent-card input,
+#sidebar .section.thermometer .tent-card input,
+#sidebar .section.radar .tent-card input,
+#sidebar .section.photos .tent-card input,
+#sidebar .section.tentacles .tent-card input,
+#sidebar .section.hider .tent-card input {
+    background: #0d1117 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Buttons inside the cards in colored sections */
+#sidebar .section.matching .tent-card button,
+#sidebar .section.measuring .tent-card button,
+#sidebar .section.thermometer .tent-card button,
+#sidebar .section.radar .tent-card button,
+#sidebar .section.photos .tent-card button,
+#sidebar .section.tentacles .tent-card button {
+    background: rgba(255,255,255,0.06) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+/* If any element has a pure white background, force its text to black for readability */
+.bg-white, #sidebar .bg-white, .white-bg {
+    background: #ffffff !important;
+    color: #0d1117 !important;
+}
+
+/* Buttons: default inherit color; make buttons inside non-colored sidebar sections black */
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) *,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) button {
+    color: #0d1117 !important;
+    font-weight: 400 !important;
+}
+
+/* Small text in the header should be white (subtitle under Jet Lag Maps) */
+.s-header small {
+    color: #ffffff !important;
+    font-weight: 400;
+}
+
+/* Ensure section titles remain bold even inside colored sections */
+#sidebar .section.matching .section-title,
+#sidebar .section.measuring .section-title,
+#sidebar .section.thermometer .section-title,
+#sidebar .section.radar .section-title,
+#sidebar .section.photos .section-title,
+#sidebar .section.tentacles .section-title,
+#sidebar .section.hider .section-title {
+    font-weight: 800 !important;
+    color: #ffffff !important;
+}
+
+/* Ensure Hider Tools title uses Lexend and remains white */
+#sidebar .section.hider .section-title {
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif !important;
+    text-transform: uppercase !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+}
+
+/* Small / muted text: white on dark/colored backgrounds, black on white backgrounds, non-bold */
+#sidebar small,
+#sidebar .cl-badge,
+#sidebar .layer-count,
+#sidebar .np-label,
+#sidebar .nc-lbl,
+#sidebar .sl-len,
+#sidebar .sl-more,
+#sidebar .admin-n,
+#sidebar .coord-display,
+#sidebar .popup-coords {
+    color: #6b6b6b;
+    font-weight: 400;
+}
+
+/* Override muted text to white when inside colored sidebar sections */
+#sidebar .section.matching small,
+#sidebar .section.matching .cl-badge,
+#sidebar .section.matching .layer-count,
+#sidebar .section.matching .np-label,
+#sidebar .section.matching .nc-lbl,
+#sidebar .section.matching .sl-len,
+#sidebar .section.matching .sl-more,
+#sidebar .section.matching .admin-n,
+#sidebar .section.matching .coord-display,
+#sidebar .section.matching .popup-coords,
+#sidebar .section.measuring small,
+#sidebar .section.measuring .cl-badge,
+#sidebar .section.measuring .layer-count,
+#sidebar .section.measuring .np-label,
+#sidebar .section.measuring .nc-lbl,
+#sidebar .section.measuring .sl-len,
+#sidebar .section.measuring .sl-more,
+#sidebar .section.measuring .admin-n,
+#sidebar .section.measuring .coord-display,
+#sidebar .section.measuring .popup-coords,
+#sidebar .section.thermometer small,
+#sidebar .section.thermometer .cl-badge,
+#sidebar .section.thermometer .layer-count,
+#sidebar .section.thermometer .np-label,
+#sidebar .section.thermometer .nc-lbl,
+#sidebar .section.thermometer .sl-len,
+#sidebar .section.thermometer .sl-more,
+#sidebar .section.thermometer .admin-n,
+#sidebar .section.thermometer .coord-display,
+#sidebar .section.thermometer .popup-coords,
+#sidebar .section.radar small,
+#sidebar .section.radar .cl-badge,
+#sidebar .section.radar .layer-count,
+#sidebar .section.radar .np-label,
+#sidebar .section.radar .nc-lbl,
+#sidebar .section.radar .sl-len,
+#sidebar .section.radar .sl-more,
+#sidebar .section.radar .admin-n,
+#sidebar .section.radar .coord-display,
+#sidebar .section.radar .popup-coords,
+#sidebar .section.photos small,
+#sidebar .section.photos .cl-badge,
+#sidebar .section.photos .layer-count,
+#sidebar .section.photos .np-label,
+#sidebar .section.photos .nc-lbl,
+#sidebar .section.photos .sl-len,
+#sidebar .section.photos .sl-more,
+#sidebar .section.photos .admin-n,
+#sidebar .section.photos .coord-display,
+#sidebar .section.photos .popup-coords,
+#sidebar .section.tentacles small,
+#sidebar .section.tentacles .cl-badge,
+#sidebar .section.tentacles .layer-count,
+#sidebar .section.tentacles .np-label,
+#sidebar .section.tentacles .nc-lbl,
+#sidebar .section.tentacles .sl-len,
+#sidebar .section.tentacles .sl-more,
+#sidebar .section.tentacles .admin-n,
+#sidebar .section.tentacles .coord-display,
+#sidebar .section.tentacles .popup-coords,
+#sidebar .section.hider small,
+#sidebar .section.hider .cl-badge,
+#sidebar .section.hider .layer-count,
+#sidebar .section.hider .np-label,
+#sidebar .section.hider .nc-lbl,
+#sidebar .section.hider .sl-len,
+#sidebar .section.hider .sl-more,
+#sidebar .section.hider .admin-n,
+#sidebar .section.hider .coord-display,
+#sidebar .section.hider .popup-coords {
+    color: #ffffff !important;
+    font-weight: 400 !important;
+}
+
 
 /* ── Hider Tools: station search combobox ─────────── */
 .hider-poi-combo {
@@ -164,17 +640,59 @@ input[type='number'] {
     font-size: 13px;
     min-width: 0;
 }
+
+/* Make the City input text explicitly white for readability */
+#cityInput {
+    color: #ffffff !important;
+    background: #0d1117 !important;
+}
+
+/* Stronger overrides for placeholder and browser autofill */
+#cityInput::placeholder {
+    color: rgba(255,255,255,0.7) !important;
+}
+input#cityInput:-webkit-autofill,
+input#cityInput:-webkit-autofill::first-line {
+    -webkit-text-fill-color: #ffffff !important;
+}
+input#cityInput {
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ----------------------------
+   Tentacles: Force white text
+   ---------------------------- */
+/* Highest-specificity override to ensure all text in the Tentacles section is white */
+#sidebar .section.tentacles,
+#sidebar .section.tentacles * {
+    color: #ffffff !important;
+}
+
+/* If any element uses the utility white-bg inside tentacles, keep its text white and preserve the tentacles tint */
+#sidebar .section.tentacles .bg-white,
+#sidebar .section.tentacles .white-bg {
+    background: transparent !important;
+    color: #ffffff !important;
+}
+
+/* Ensure section title uses Lexend and remains bold and white */
+#sidebar .section.tentacles .section-title {
+    font-family: 'Lexend', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    text-transform: uppercase;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+}
 input:focus {
     outline: none;
-    border-color: #f0883e;
-    box-shadow: 0 0 0 2px rgba(240, 136, 62, 0.2);
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
 }
 input::placeholder {
     color: #484f58;
 }
 
 button {
-    background: #f0883e;
+    background: #ffffff;
     color: #0d1117;
     border: none;
     padding: 5px 12px;
@@ -185,7 +703,7 @@ button {
     white-space: nowrap;
 }
 button:hover {
-    background: #d4722e;
+    background: #efefef;
 }
 
 button.ghost {
@@ -254,7 +772,7 @@ button.danger:hover {
     width: 15px;
     height: 15px;
     cursor: pointer;
-    accent-color: #f0883e;
+    accent-color: #ffffff;
     flex-shrink: 0;
 }
 .dot {
@@ -323,7 +841,7 @@ button.danger:hover {
     min-height: 30px;
 }
 #status.loading {
-    color: #f0883e;
+    color: #ffffff;
 }
 #status.error {
     color: #f85149;
@@ -454,7 +972,7 @@ button.meas-active:hover {
 }
 
 .meas-icon {
-    background: #f0883e;
+    background: #ffffff;
     color: #0d1117;
     font-weight: 800;
     font-size: 11px;
@@ -487,9 +1005,9 @@ button.meas-active:hover {
 .click-marker-icon {
     width: 22px;
     height: 22px;
-    border: 2.5px solid #f0883e;
+    border: 2.5px solid #ffffff;
     border-radius: 50%;
-    background: rgba(240, 136, 62, 0.18);
+    background: rgba(255, 255, 255, 0.08);
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
     position: relative;
 }
@@ -500,7 +1018,7 @@ button.meas-active:hover {
     top: 2px;
     bottom: 2px;
     width: 1.5px;
-    background: #f0883e;
+    background: #ffffff;
     transform: translateX(-50%);
 }
 .click-marker-icon::after {
@@ -510,7 +1028,7 @@ button.meas-active:hover {
     left: 2px;
     right: 2px;
     height: 1.5px;
-    background: #f0883e;
+    background: #ffffff;
     transform: translateY(-50%);
 }
 
@@ -523,7 +1041,7 @@ button.meas-active:hover {
     white-space: nowrap;
     padding: 3px 8px;
     border-radius: 4px;
-    border: 2px solid #f0883e;
+    border: 2px solid #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
     pointer-events: none;
     line-height: 1.4;
@@ -613,10 +1131,8 @@ button.meas-active:hover {
 }
 
 /* ── FABs (floating action buttons) ──────────────── */
-#printFab,
 #exportStateFab,
 #importStateFab,
-#styleFab,
 #boundaryFab,
 #permalinkFab,
 #layerFab,
@@ -639,29 +1155,29 @@ button.meas-active:hover {
     justify-content: center;
     overflow: visible;
 }
-#printFab {
+#exportStateFab {
     bottom: 30px;
 }
-#exportStateFab {
+#importStateFab {
     bottom: 84px;
 }
-#importStateFab {
-    bottom: 138px;
-}
-#styleFab {
-    bottom: 192px;
+/* Desired play-mode ordering (from bottom upward): locate, boundary, layer */
+#locateFab {
+    bottom: 30px;
 }
 #boundaryFab {
-    bottom: 246px;
-}
-#permalinkFab {
-    bottom: 300px;
+    bottom: 84px;
 }
 #layerFab {
-    bottom: 354px;
+    bottom: 138px;
 }
-#locateFab {
-    bottom: 408px;
+#/***** Layer FAB text color override to ensure white text *****/
+#layerFab {
+    color: #ffffff;
+}
+/* Keep permalink/export offsets if they reappear */
+#permalinkFab {
+    bottom: 192px;
 }
 #printFab:hover,
 #exportStateFab:hover,
@@ -724,6 +1240,29 @@ button.meas-active:hover {
 }
 #layerPanel.open {
     display: flex;
+}
+
+/* Ensure layer panel text is readable on dark background */
+#layerPanel {
+    color: #ffffff;
+}
+#layerPanel .layer-name {
+    color: #ffffff;
+}
+#layerPanel .layer-count {
+    color: rgba(255,255,255,0.7);
+}
+
+/* Stronger override in case other rules take precedence */
+#layerPanel .layer-row .layer-name {
+    color: #ffffff !important;
+}
+#layerPanel .layer-row .layer-count {
+    color: rgba(255,255,255,0.85) !important;
+}
+#layerPanel {
+    background: #161b22 !important;
+    color: #ffffff !important;
 }
 
 .lp-header {
@@ -1432,6 +1971,29 @@ button.meas-active:hover {
     margin-bottom: 8px;
 }
 .tent-card-hdr {
+
+/* Final override: ensure Tentacles section and its cards use white text for everything */
+#sidebar .section.tentacles,
+#sidebar .section.tentacles *,
+#sidebar .section.tentacles .tent-card,
+#sidebar .section.tentacles .tent-card * {
+    color: #ffffff !important;
+}
+
+/* Inputs/selects/buttons within tentacles cards */
+#sidebar .section.tentacles .tent-card input,
+#sidebar .section.tentacles .tent-card select,
+#sidebar .section.tentacles .tent-card button {
+    color: #ffffff !important;
+}
+
+/* Ensure the summary/title uses white and uppercase Lexend */
+#sidebar .section.tentacles .section-title,
+.section.tentacles .layers-details > summary {
+    color: #ffffff !important;
+    font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+    text-transform: uppercase;
+}
     display: flex;
     align-items: center;
     justify-content: space-between;

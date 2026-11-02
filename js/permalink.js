@@ -68,16 +68,24 @@ function copyPermalink() {
     navigator.clipboard
         ?.writeText(location.href)
         .then(() => {
-            btn.textContent = '✅';
-            setTimeout(() => {
-                btn.textContent = '🔗';
-            }, 1500);
+            if (btn) {
+                btn.textContent = '✅';
+                setTimeout(() => {
+                    btn.textContent = '🔗';
+                }, 1500);
+            } else {
+                setStatus(t('status_permalink_copied') || 'Link copied', 'ok');
+            }
         })
         .catch(() => {
-            btn.textContent = '✗';
-            setTimeout(() => {
-                btn.textContent = '🔗';
-            }, 1500);
+            if (btn) {
+                btn.textContent = '✗';
+                setTimeout(() => {
+                    btn.textContent = '🔗';
+                }, 1500);
+            } else {
+                setStatus(t('status_permalink_copy_failed') || 'Copy failed', 'error');
+            }
         });
 }
 

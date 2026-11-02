@@ -19,6 +19,11 @@ addMapClickHook((e) => {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return false;
 
+    if (q.confirmed) {
+        setStatus(t('status_locked') || 'Question is confirmed', 'error');
+        return false;
+    }
+
     q.lat = e.latlng.lat;
     q.lng = e.latlng.lng;
 
@@ -27,6 +32,9 @@ addMapClickHook((e) => {
 
     document.getElementById(`meas-pick-btn-${id}`)?.classList.remove('meas-active');
     setStatus('', '');
+
+    // Create draggable marker immediately so users can refine the picked location
+    _measCreateDraggableMarker(q, id);
 
     // Auto-run if we have a selected layer
     if (q.layerId) measRun(id);
@@ -41,6 +49,30 @@ function _measClearLayers(q) {
     }
 }
 
+function _measCreateDraggableMarker(q, id) {
+    if (!q) return;
+    if (q.marker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
+
+    q.marker = createDraggableMarker([q.lat, q.lng]).addTo(map);
+
+    q.marker.on('drag', (e) => {
+        const pos = getMarkerPosition(e.target);
+        const coordEl = document.getElementById(`meas-coord-${id}`);
+        if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
+    });
+    q.marker.on('dragend', (e) => {
+        const pos = getMarkerPosition(e.target);
+        q.lat = pos.lat;
+        q.lng = pos.lng;
+        const coordEl = document.getElementById(`meas-coord-${id}`);
+        if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
+        measRun(id);
+    });
+}
+
 function addMeasuringQuestion() {
     const id = _measNextId++;
     _measQuestions.push({
@@ -49,7 +81,9 @@ function addMeasuringQuestion() {
         lat: null,
         lng: null,
         answer: null, // 'closer' or 'further'
-        maskLayer: null
+        maskLayer: null,
+        marker: null,
+        confirmed: false
     });
     _measRenderCards();
 }
@@ -57,18 +91,32 @@ function addMeasuringQuestion() {
 function measRemoveQuestion(id) {
     const idx = _measQuestions.findIndex((x) => x.id === id);
     if (idx === -1) return;
-    _measClearLayers(_measQuestions[idx]);
+    // remove mask and marker (marker not removed by _measClearLayers)
+    const q = _measQuestions[idx];
+    if (q.marker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
+    _measClearLayers(q);
     _measQuestions.splice(idx, 1);
     _measRenderCards();
 }
 
 function clearAllMeasuringQuestions() {
-    _measQuestions.forEach(_measClearLayers);
+    _measQuestions.forEach((q) => {
+        if (q.marker) {
+            try { map.removeLayer(q.marker); } catch (e) {}
+            q.marker = null;
+        }
+        _measClearLayers(q);
+    });
     _measQuestions.length = 0;
     _measRenderCards();
 }
 
 function measStartPick(id) {
+    const q = _measQuestions.find((x) => x.id === id);
+    if (!q || q.confirmed) return setStatus(t('status_locked') || 'Question is confirmed', 'error');
     _measPickingId = id;
     document.getElementById(`meas-pick-btn-${id}`)?.classList.add('meas-active');
     setStatus(t('matching_pick'), 'loading');
@@ -78,6 +126,7 @@ function measStartPick(id) {
 function measUseGeo(id) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;
+    if (q.confirmed) return setStatus(t('status_locked') || 'Question is confirmed', 'error');
     if (!geoMarker) {
         setStatus(t('status_rq_no_geo'), 'error');
         return;
@@ -90,12 +139,15 @@ function measUseGeo(id) {
     if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
 
     _measRenderCards();
+    // Create draggable marker immediately so users can refine the picked location
+    _measCreateDraggableMarker(q, id);
     measRun(id);
 }
 
 function measSetLayer(id, layerId) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;
+    if (q.confirmed) return;
     q.layerId = layerId || null;
     _measClearLayers(q);
     _measRenderCards();
@@ -105,9 +157,25 @@ function measSetLayer(id, layerId) {
 function measSetAnswer(id, answer) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;
+    if (q.confirmed) return;
     q.answer = answer;
     _measRenderCards();
     measRun(id);
+}
+
+function measConfirm(id) {
+    const q = _measQuestions.find((x) => x.id === id);
+    if (!q) return;
+
+    // Remove interactive marker
+    if (q.marker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
+    // Keep maskLayer but remove transient layers (none here)
+    q.confirmed = true;
+    _measRenderCards();
+    setStatus(`Measuring ${id} confirmed`, 'ok');
 }
 
 function _measRenderCards() {
@@ -116,6 +184,14 @@ function _measRenderCards() {
 
     el.innerHTML = _measQuestions
         .map((q, i) => {
+            if (q.confirmed) {
+                return `<div class="tent-card" id="meas-${q.id}" style="opacity:0.8; background:#161b22">
+                    <div class="tent-card-hdr">
+                        <span class="tent-card-title">${tf('MEASURING_CARD_TITLE', i + 1)} (Confirmed)</span>
+                        <button class="ghost tent-card-del" onclick="measRemoveQuestion(${q.id})" title="Remove">✕</button>
+                    </div>
+                </div>`;
+            }
             const available = Object.keys(layerDataCache || {});
             const layerOpts = available
                 .map((id) => {
@@ -130,8 +206,11 @@ function _measRenderCards() {
             return `
 <div class="tent-card" id="meas-${q.id}">
   <div class="tent-card-hdr">
-    <span class="tent-card-title">${tf('MEASURING_CARD_TITLE', i + 1)}</span>
-    <button class="ghost tent-card-del" onclick="measRemoveQuestion(${q.id})" title="Remove">✕</button>
+        <span class="tent-card-title">${tf('MEASURING_CARD_TITLE', i + 1)}</span>
+        <div style="display:flex; gap:4px">
+                <button class="ghost tent-card-del" onclick="measRemoveQuestion(${q.id})" title="Remove">✕</button>
+                ${q.confirmed ? `<button class="ghost" style="font-size:10px; padding: 2px 4px" disabled>Confirmed</button>` : `<button class="ghost" style="font-size:10px; padding: 2px 4px" onclick="measConfirm(${q.id})">Confirm</button>`}
+        </div>
   </div>
   <select onchange="measSetLayer(${q.id}, this.value)">
     <option value="">${t('matching_choose_layer')}</option>
@@ -155,6 +234,10 @@ function _measRenderCards() {
 async function measRun(id) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;
+    if (q.confirmed) {
+        setStatus(t('status_locked') || 'Question is confirmed', 'info');
+        return;
+    }
     _measClearLayers(q);
     if (!q.layerId) return;
     if (q.lat === null || q.lng === null) return;

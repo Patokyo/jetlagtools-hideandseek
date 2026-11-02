@@ -24,6 +24,31 @@ function _thermGetWorldRect() {
     ]]);
 }
 
+function _thermRemoveGuideLayers(q, opts = {}) {
+    // opts.preserveCircle: if true, do not remove L.Circle guide layers (the radius circle)
+    const preserveCircle = !!opts.preserveCircle;
+
+    // Iterate over map layers and remove those marked as thermometer guides
+    map.eachLayer((layer) => {
+        try {
+            if (!layer || !layer._isThermGuide) return;
+            if (preserveCircle && layer instanceof L.Circle) return;
+            map.removeLayer(layer);
+        } catch (e) {
+            // ignore
+        }
+    });
+
+    // Also purge them from q.layers if present; keep circle entries when preserving
+    if (q && Array.isArray(q.layers)) {
+        q.layers = q.layers.filter((l) => {
+            if (!(l && l._isThermGuide)) return true;
+            if (preserveCircle && l instanceof L.Circle) return true;
+            return false;
+        });
+    }
+}
+
 /**
  * Creates a half-plane polygon.
  * A and B are [lng, lat].
@@ -107,37 +132,69 @@ function _thermDrawGuide(id) {
     const q = _thermQuestions.find((x) => x.id === id);
     if (!q || q.lat === null) return;
 
-    // Clear only the transient guide layers, not the markers
+    // Remove any previously created thermometer guide layers (safety)
+    // If dragging, preserve the circle so it doesn't flicker; otherwise remove all
+    _thermRemoveGuideLayers(q, { preserveCircle: !!q && !!q._thermIsDragging });
+
+    // Clear only the transient guide layers tracked on this question, not the markers
     q.layers.forEach((l) => {
         if (!(l instanceof L.Marker || l instanceof L.CircleMarker)) {
-            map.removeLayer(l);
+            try { map.removeLayer(l); } catch (e) {}
         }
     });
     q.layers = q.layers.filter(l => l instanceof L.Marker || l instanceof L.CircleMarker);
 
-    const center = L.latLng(q.lat, q.lng);
-
-    // Circle of radius d - made bolder
-    const circle = L.circle(center, {
-        radius: q.dist * 1000,
-        color: '#8b949e',
-        weight: 2,
-        dashArray: '8 4',
-        fill: false,
-        interactive: false,
-    }).addTo(map);
-    q.layers.push(circle);
-
-    // Point A marker
+    // Point A marker (draggable)
     if (!q.markerA) {
-        q.markerA = L.circleMarker(center, {
-            radius: 6,
-            color: '#3b82f6',
-            fillColor: '#3b82f6',
-            fillOpacity: 1,
-            interactive: false,
-        }).addTo(map);
+        q.markerA = createDraggableMarker([q.lat, q.lng]).addTo(map);
         q.layers.push(q.markerA);
+
+        q.markerA.on('drag', (e) => {
+            const pos = getMarkerPosition(e.target);
+
+            // If B exists, preserve its bearing relative to the old center and keep distance = q.dist
+            if (q.latB !== null) {
+                const oldLat = q.lat;
+                const oldLng = q.lng;
+                const angle = Math.atan2(q.latB - oldLat, q.lngB - oldLng);
+                const distDeg = q.dist / 111;
+
+                q.lat = pos.lat;
+                q.lng = pos.lng;
+
+                q.latB = q.lat + distDeg * Math.cos(angle);
+                q.lngB = q.lng + (distDeg * Math.sin(angle)) / Math.cos(q.lat * Math.PI / 180);
+
+                if (q.markerB) q.markerB.setLatLng([q.latB, q.lngB]);
+            } else {
+                // No B yet: just move A and initialize B at 45° as before
+                q.lat = pos.lat;
+                q.lng = pos.lng;
+                const distDeg = q.dist / 111;
+                const angle = Math.PI / 4;
+                q.latB = q.lat + distDeg * Math.cos(angle);
+                q.lngB = q.lng + (distDeg * Math.sin(angle)) / Math.cos(q.lat * Math.PI / 180);
+                if (q.markerB) q.markerB.setLatLng([q.latB, q.lngB]);
+            }
+
+                _thermUpdateGuideElements(id);
+                _thermDrawOcclusion(id);
+        });
+
+            q.markerA.on('dragstart', () => {
+                q._thermIsDragging = true;
+                // redraw so the line/dot are hidden while dragging
+                _thermUpdateGuideElements(id);
+            });
+
+            q.markerA.on('dragend', () => {
+                q._thermIsDragging = false;
+                // redraw complete guide (circle + line) after drop
+                _thermUpdateGuideElements(id);
+                _thermDrawOcclusion(id);
+                _thermRenderCards();
+                updatePermalink();
+            });
     }
 
     if (q.latB !== null) {
@@ -145,19 +202,11 @@ function _thermDrawGuide(id) {
 
         // Point B marker - made bigger and distinct
         if (!q.markerB) {
-            q.markerB = L.marker(pointB, {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'therm-marker-b',
-                    html: `<div style="background:#ef4444; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>`,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                })
-            }).addTo(map);
+            q.markerB = createDraggableMarker(pointB).addTo(map);
             q.layers.push(q.markerB);
 
             q.markerB.on('drag', (e) => {
-                const pos = e.target.getLatLng();
+                const pos = getMarkerPosition(e.target);
                 const centerPos = L.latLng(q.lat, q.lng);
 
                 const dist = centerPos.distanceTo(pos);
@@ -192,48 +241,74 @@ function _thermUpdateGuideElements(id) {
     const q = _thermQuestions.find((x) => x.id === id);
     if (!q || q.lat === null || q.latB === null) return;
 
-    q.layers = q.layers.filter(l => {
-        if (l instanceof L.Polyline && l !== q.markerA && l !== q.markerB) {
-            map.removeLayer(l);
-            return false;
-        }
-        if (l instanceof L.Circle && l !== q.markerA && l !== q.markerB) {
-            map.removeLayer(l);
-            return false;
-        }
-        return true;
-    });
+    // Clear existing guide layers (circles and polylines)
+        // Remove any previous guides marked as thermometer guides
+        // If dragging, preserve the circle so the radius remains visible
+        _thermRemoveGuideLayers(q, { preserveCircle: !!q && !!q._thermIsDragging });
 
     const center = L.latLng(q.lat, q.lng);
-    const circle = L.circle(center, {
-        radius: q.dist * 1000,
-        color: '#8b949e',
-        weight: 2,
-        dashArray: '8 4',
-        fill: false,
-        interactive: false,
-    }).addTo(map);
-    q.layers.push(circle);
+    // If a guide circle already exists (and was preserved during drag), update it
+    let existingCircle = null;
+    if (Array.isArray(q.layers)) {
+        for (let i = 0; i < q.layers.length; i++) {
+            const l = q.layers[i];
+            if (l && l instanceof L.Circle && l._isThermGuide) {
+                existingCircle = l;
+                break;
+            }
+        }
+    }
 
-    // UNIFIED PLANAR MATH: Use simple lat/lng for BOTH line and mask
-    const midLat = (q.lat + q.latB) / 2;
-    const midLng = (q.lng + q.lngB) / 2;
-    const dx = q.lngB - q.lng;
-    const dy = q.latB - q.lat;
+    if (existingCircle) {
+        existingCircle.setLatLng(center);
+        existingCircle.setRadius(q.dist * 1000);
+    } else {
+        const circle = L.circle(center, {
+            radius: q.dist * 1000,
+            color: '#8b949e',
+            weight: 2,
+            dashArray: '8 4',
+            fill: false,
+            interactive: false,
+        }).addTo(map);
+        circle._isThermGuide = true;
+        q.layers.push(circle);
+    }
+
+    // Mirror logic from _thermDrawOcclusion exactly
+    const lngA = q.lng;
+    const latA = q.lat;
+    const lngB = q.lngB;
+    const latB = q.latB;
+
+    const midLng = (lngA + lngB) / 2;
+    const midLat = (latA + latB) / 2;
+
+    const dx = lngB - lngA;
+    const dy = latB - latA;
     const px = -dy;
     const py = dx;
-    const scale = 10;
 
-    const line = L.polyline([
-        [midLat - py * scale, midLng - px * scale],
-        [midLat + py * scale, midLng + px * scale]
-    ], {
-        color: '#8b949e',
-        weight: 2,
-        dashArray: '4 4',
-        interactive: false,
-    }).addTo(map);
-    q.layers.push(line);
+    const len = Math.sqrt(px * px + py * py);
+    const uPx = len !== 0 ? px / len : 0;
+    const uPy = len !== 0 ? py / len : 0;
+
+    const scale = 0.5; // Sufficient to cover game zone without projection artifacts
+
+    const p1 = [midLat + uPy * scale, midLng + uPx * scale];
+    const p2 = [midLat - uPy * scale, midLng - uPx * scale];
+
+    // Only draw the bisector line when not actively dragging
+    if (!q._thermIsDragging) {
+        const line = L.polyline([p1, p2], {
+            color: '#8b949e',
+            weight: 2,
+            dashArray: '4 4',
+            interactive: false,
+        }).addTo(map);
+        line._isThermGuide = true;
+        q.layers.push(line);
+    }
 }
 
 function _thermClearLayers(q) {
@@ -270,7 +345,7 @@ function _thermDrawOcclusion(id) {
 
     // Scale large enough to cover any reasonable game zone,
     // but not so large that it causes floating point issues.
-    const scale = 20;
+    const scale = 1000;
 
     // Create a huge rectangle that covers the B-side of the bisector.
     // Points are ordered to ensure a consistent counter-clockwise winding.
@@ -305,6 +380,27 @@ function _thermDrawOcclusion(id) {
         // Colder: hider is closer to A. Keep A visible, shade B.
         q.maskLayer = createOcclusionLayer(wedgeB).addTo(map);
     }
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+function thermConfirm(id) {
+    const q = _thermQuestions.find((x) => x.id === id);
+    if (!q) return;
+
+    // Remove markers
+    if (q.markerA) map.removeLayer(q.markerA);
+    if (q.markerB) map.removeLayer(q.markerB);
+
+    // Remove guide circles and lines
+    q.layers.forEach((l) => map.removeLayer(l));
+    q.layers = [];
+
+    // Mark as confirmed to hide editing controls in render
+    q.confirmed = true;
+
+    _thermRenderCards();
+    setStatus(`Thermometer ${id} confirmed`, 'ok');
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -457,6 +553,15 @@ function _thermRenderCards() {
 
     el.innerHTML = _thermQuestions
         .map((q, i) => {
+            if (q.confirmed) {
+                return `<div class="tent-card" id="therm-${q.id}" style="opacity:0.8; background:#161b22">
+                    <div class="tent-card-hdr">
+                        <span class="tent-card-title">${tf('THERM_CARD_TITLE', i + 1)} (Confirmed)</span>
+                        <button class="ghost tent-card-del" onclick="removeThermometerQuestion(${q.id})" title="Remove">✕</button>
+                    </div>
+                </div>`;
+            }
+
             const coordA = q.lat !== null ? `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E` : t('matching_pick');
             const coordB = q.latB !== null ? `${q.latB.toFixed(5)}° N  ${q.lngB.toFixed(5)}° E` : '– pick point B –';
 
@@ -464,7 +569,10 @@ function _thermRenderCards() {
 <div class="tent-card" id="therm-${q.id}">
   <div class="tent-card-hdr">
     <span class="tent-card-title">${tf('THERM_CARD_TITLE', i + 1)}</span>
-    <button class="ghost tent-card-del" onclick="removeThermometerQuestion(${q.id})" title="Remove">✕</button>
+    <div style="display:flex; gap:4px">
+        <button class="ghost tent-card-del" onclick="removeThermometerQuestion(${q.id})" title="Remove">✕</button>
+        <button class="ghost" style="font-size:10px; padding: 2px 4px" onclick="thermConfirm(${q.id})">Confirm</button>
+    </div>
   </div>
   <div class="row" style="margin-bottom:6px">
     <input type="number" value="${q.dist}" min="0.1" step="0.1" style="max-width:70px"

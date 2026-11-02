@@ -17,7 +17,7 @@ addMapClickHook((e) => {
     _tentPickingId = null;
     const q = _tentQuestions.find((x) => x.id === id);
     if (!q) return false;
-
+    if (q.confirmed) return setStatus(t('status_locked') || 'Question is confirmed', 'error');
     q.centerLat = e.latlng.lat;
     q.centerLng = e.latlng.lng;
 
@@ -27,6 +27,8 @@ addMapClickHook((e) => {
     document.getElementById(`tent-pick-btn-${id}`)?.classList.remove('meas-active');
     setStatus('', '');
     _tentFetchPOIs(id);
+    // create draggable marker immediately so user can fine-tune
+    _tentCreateDraggableMarker(q, id);
     return true;
 });
 
@@ -76,6 +78,12 @@ async function _tentFetchPOIs(id) {
             })
             .sort((a, b) => a.name.localeCompare(b.name));
 
+        // Keep the previous selection when it is still in range; otherwise use
+        // the first in-range POI so the Voronoi and marker remain available.
+        const previousPOIId = q.selectedPOI?.id;
+        q.selectedPOI =
+            q.fetchedPOIs.find((p) => p.id === previousPOIId) ?? q.fetchedPOIs[0] ?? null;
+
         if (sel) {
             sel.innerHTML =
                 `<option value="">${t('tent_select_poi')}</option>` +
@@ -87,12 +95,9 @@ async function _tentFetchPOIs(id) {
                     .join('');
             sel.disabled = false;
         }
-        // Re-resolve the previous selection against the fresh POI list
-        if (q.selectedPOI) {
-            q.selectedPOI = q.fetchedPOIs.find((p) => p.id === q.selectedPOI.id) ?? null;
-            if (q.selectedPOI) _tentDraw(id);
-            else _tentClearLayers(q);
-        }
+
+        if (q.selectedPOI) _tentDraw(id);
+        else _tentClearLayers(q, { preserveMarker: true });
 
         setStatus(
             tf('tent_status_found', q.fetchedPOIs.length, t(label)),
@@ -107,6 +112,34 @@ async function _tentFetchPOIs(id) {
         showErrorPopup(err.message);
         setStatus('Error processing POIs', 'error');
     }
+}
+
+// Update the coordinate label in the tentacle card
+function updateTentCoordLabel(id, latlng) {
+    const el = document.querySelector('#tent-' + id + ' .tent-coord');
+    if (el) el.textContent = `${latlng.lat.toFixed(5)}° N  ${latlng.lng.toFixed(5)}° E`;
+}
+
+// Create a draggable marker for a tentacle question (or replace existing)
+function _tentCreateDraggableMarker(q, id) {
+    if (!q) return;
+    if (q.marker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
+    q.marker = createDraggableMarker([q.centerLat, q.centerLng]).addTo(map);
+    q.marker.on('drag', (e) => {
+        const p = getMarkerPosition(e.target);
+        updateTentCoordLabel(id, p);
+    });
+    q.marker.on('dragend', (e) => {
+        const p = getMarkerPosition(e.target);
+        q.centerLat = p.lat;
+        q.centerLng = p.lng;
+        _tentDraw(id);
+        _tentFetchPOIs(id);
+        updatePermalink();
+    });
 }
 
 // ── Geodesically-correct Voronoi via equirectangular projection ───────────────
@@ -151,7 +184,7 @@ async function _tentDraw(id) {
     const q = _tentQuestions.find((x) => x.id === id);
     if (!q || !q.selectedPOI || q.fetchedPOIs.length === 0) return;
 
-    _tentClearLayers(q);
+    _tentClearLayers(q, { preserveMarker: true });
 
     const radiusKm = _tentKm(q);
     const circle = turf.circle([q.centerLng, q.centerLat], radiusKm, {
@@ -210,19 +243,10 @@ async function _tentDraw(id) {
         });
     }
 
-    // Only add markers if not confirmed
+    // Keep a draggable center marker above the Voronoi and POI layers.
     if (!q.confirmed) {
-        // Center dot
-        q.layers.push(
-            L.circleMarker([q.centerLat, q.centerLng], {
-                radius: 5,
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
-                fillOpacity: 1,
-                weight: 2,
-                interactive: false,
-            }).addTo(map),
-        );
+        if (!q.marker && q.centerLat !== null) _tentCreateDraggableMarker(q, id);
+        q.marker?.setZIndexOffset(1000);
 
         // POI markers
         const def = LAYER_DEFS[q.poiLayerId];
@@ -245,9 +269,13 @@ async function _tentDraw(id) {
 }
 
 // ── Clear all map layers for a question ───────────────────────────────────────
-function _tentClearLayers(q) {
+function _tentClearLayers(q, { preserveMarker = false } = {}) {
     q.layers.forEach((l) => map.removeLayer(l));
     q.layers = [];
+    if (q.marker && !preserveMarker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -264,6 +292,7 @@ function addTentacleQuestion() {
         selectedPOI: null,
         fetchedPOIs: [],
         layers: [],
+        marker: null,
         confirmed: false,
     });
     _tentRenderCards();
@@ -308,7 +337,7 @@ function tentSetLayer(id, layerId) {
     q.selectedPOI = null;
     q.fetchedPOIs = [];
     q.confirmed = false;
-    _tentClearLayers(q);
+    _tentClearLayers(q, { preserveMarker: true });
     const sel = document.getElementById(`tent-poi-select-${id}`);
     if (sel) sel.innerHTML = `<option value="">${t('tent_select_poi')}</option>`;
     if (q.centerLat !== null) _tentFetchPOIs(id);
@@ -318,6 +347,11 @@ function tentConfirm(id) {
     const q = _tentQuestions.find((x) => x.id === id);
     if (!q) return;
     q.confirmed = !q.confirmed;
+    // when confirming, remove draggable marker so only overlay remains
+    if (q.confirmed && q.marker) {
+        try { map.removeLayer(q.marker); } catch (e) {}
+        q.marker = null;
+    }
     _tentDraw(id);
     _tentRenderCards();
     updatePermalink();
@@ -436,42 +470,50 @@ function _tentRenderCards() {
                       .join('')
                 : `<option value="">${t('tent_select_poi')}</option>`;
 
-            const coordTxt =
-                q.centerLat !== null
-                    ? `${q.centerLat.toFixed(5)}° N  ${q.centerLng.toFixed(5)}° E`
-                    : t('tent_set_center');
+                        const coordTxt =
+                                q.centerLat !== null
+                                        ? `${q.centerLat.toFixed(5)}° N  ${q.centerLng.toFixed(5)}° E`
+                                        : t('tent_set_center');
 
-            return `
+                        if (q.confirmed) {
+                                return `<div class="tent-card" id="tent-${q.id}" style="opacity:0.8; background:#161b22">
+    <div class="tent-card-hdr">
+        <span class="tent-card-title">${tf('tent_card_title', i + 1)}</span>
+        <button class="ghost tent-card-del" onclick="removeTentacleQuestion(${q.id})" title="Remove">✕</button>
+    </div>
+</div>`;
+                        }
+
+                        return `
 <div class="tent-card" id="tent-${q.id}">
-  <div class="tent-card-hdr">
-    <span class="tent-card-title">${tf('tent_card_title', i + 1)}</span>
-    <button class="ghost tent-card-del" onclick="removeTentacleQuestion(${q.id})" title="Remove">✕</button>
-  </div>
-  <div class="row" style="margin-bottom:6px">
-    <input type="number" value="${q.radius}" min="1" max="9999" step="1" style="max-width:70px"
-      onchange="tentSetRadius(${q.id}, this.value)">
-    <select style="flex:1" onchange="tentSetUnit(${q.id}, this.value)">
-      <option value="km"${q.unit === 'km' ? ' selected' : ''}>${t('tent_kilometers')}</option>
-      <option value="mi"${q.unit === 'mi' ? ' selected' : ''}>${t('tent_miles')}</option>
+        <div class="tent-card-hdr">
+                <span class="tent-card-title">${tf('tent_card_title', i + 1)}</span>
+                <div style="display:flex; gap:4px">
+                                <button class="ghost tent-card-del" onclick="removeTentacleQuestion(${q.id})" title="Remove">✕</button>
+                                <button class="ghost" style="font-size:10px; padding:2px 4px" onclick="tentConfirm(${q.id})">Confirm</button>
+                </div>
+        </div>
+    <div class="row" style="margin-bottom:6px">
+        <input type="number" value="${q.radius}" min="1" max="9999" step="1" style="max-width:70px"
+            onchange="tentSetRadius(${q.id}, this.value)">
+        <select style="flex:1" onchange="tentSetUnit(${q.id}, this.value)">
+            <option value="km"${q.unit === 'km' ? ' selected' : ''}>${t('tent_kilometers')}</option>
+            <option value="mi"${q.unit === 'mi' ? ' selected' : ''}>${t('tent_miles')}</option>
+        </select>
+    </div>
+    <select style="margin-bottom:6px" onchange="tentSetLayer(${q.id}, this.value)">
+        <option value="">${t('matching_choose_layer') || 'Choose layer...'}</option>
+        ${layerOpts}
     </select>
-  </div>
-  <select style="margin-bottom:6px" onchange="tentSetLayer(${q.id}, this.value)">
-    <option value="">${t('matching_choose_layer') || 'Choose layer...'}</option>
-    ${layerOpts}
-  </select>
-  <div class="row" style="margin-bottom:6px">
-    <button id="tent-pick-btn-${q.id}" class="tent-pick-btn" style="flex:1" onclick="tentStartPick(${q.id})">
-      ${t('tent_location_btn')}
-    </button>
-    <button class="tent-pick-btn" style="flex:1" onclick="tentUseGeo(${q.id})" title="${t('rq_geo_title')}">🎯</button>
-  </div>
-  <div id="tent-coord-${q.id}" class="tent-coord">${esc(coordTxt)}</div>
-  <select id="tent-poi-select-${q.id}" onchange="tentSelectPOI(${q.id}, this.value)">
-    ${poiOpts}
-  </select>
-  <button class="tent-pick-btn ${q.confirmed ? 'active' : ''}" style="width:100%; margin-top:6px" onclick="tentConfirm(${q.id})">
-    ${q.confirmed ? 'Confirmed' : 'Confirm'}
-  </button>
+        <div class="row" style="margin-bottom:6px">
+                <button id="tent-pick-btn-${q.id}" class="tent-pick-btn" style="flex:1" onclick="tentStartPick(${q.id})">
+                        ${t('tent_location_btn')}
+                </button>
+                <button class="tent-pick-btn" style="flex:1" onclick="tentUseGeo(${q.id})" title="${t('rq_geo_title')}">🎯</button>
+        </div>
+        <select id="tent-poi-select-${q.id}" onchange="tentSelectPOI(${q.id}, this.value)">
+                ${poiOpts}
+        </select>
 </div>`;
         })
         .join('');

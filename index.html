@@ -74,6 +74,7 @@
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
     <style id="print-page-size">
       @page {
@@ -283,35 +284,11 @@
       </div>
 
       <div class="section" data-setup-section="true">
-        <button style="width: 100%" onclick="completeMapSetup()">Start Game</button>
-      </div>
-
-      <!-- RADAR -->
-      <div class="section" data-tool-section="true">
-        <details class="layers-details">
-          <summary class="section-title" data-i18n="sec_rq">RADAR</summary>
-
-          <div id="rqCards"></div>
-          <button
-            style="width: 100%; margin-top: 4px"
-            onclick="addRadiusQuestion()"
-            data-i18n="btn_add_rq"
-          >
-            + Add radar
-          </button>
-          <button
-            class="ghost"
-            style="width: 100%; margin-top: 6px"
-            onclick="clearAllRadiusQuestions()"
-            data-i18n="btn_clear_rq"
-          >
-            Remove all radar
-          </button>
-        </details>
+        <!-- Start Game button moved to header (setupMenuBtn). -->
       </div>
 
       <!-- MATCHING -->
-      <div class="section" data-tool-section="true">
+      <div class="section matching" data-tool-section="true">
         <details class="layers-details">
           <summary class="section-title" data-i18n="sec_matching">MATCHING</summary>
           <div style="font-size: 11px; color: #484f58; margin: 6px 0 8px" data-i18n="matching_hint">
@@ -339,7 +316,7 @@
       </div>
 
       <!-- MEASURING -->
-      <div class="section" data-tool-section="true">
+      <div class="section measuring" data-tool-section="true">
         <details class="layers-details">
           <summary class="section-title" data-i18n="MEASURING">MEASURING</summary>
           <div style="font-size: 11px; color: #484f58; margin: 6px 0 8px" data-i18n="MEASURING_HINT">
@@ -365,7 +342,7 @@
       </div>
 
       <!-- THERMOMETER -->
-      <div class="section" data-tool-section="true">
+      <div class="section thermometer" data-tool-section="true">
         <details class="layers-details">
           <summary class="section-title" data-i18n="THERMOMETER">THERMOMETER</summary>
           <div style="font-size: 11px; color: #484f58; margin: 6px 0 8px" data-i18n="THERMOMETER_HINT">
@@ -389,9 +366,33 @@
           </button>
         </details>
       </div>
+      
+      <!-- RADAR -->
+      <div class="section radar" data-tool-section="true">
+        <details class="layers-details">
+          <summary class="section-title" data-i18n="sec_rq">RADAR</summary>
+
+          <div id="rqCards"></div>
+          <button
+            style="width: 100%; margin-top: 4px"
+            onclick="addRadiusQuestion()"
+            data-i18n="btn_add_rq"
+          >
+            + Add radar
+          </button>
+          <button
+            class="ghost"
+            style="width: 100%; margin-top: 6px"
+            onclick="clearAllRadiusQuestions()"
+            data-i18n="btn_clear_rq"
+          >
+            Remove all radar
+          </button>
+        </details>
+      </div>
 
       <!-- Questions / Tentacles -->
-      <div class="section" data-tool-section="true">
+      <div class="section tentacles" data-tool-section="true">
         <details class="layers-details">
           <summary class="section-title" data-i18n="sec_questions">Tentacles</summary>
           <div id="tentacleCards"></div>
@@ -406,7 +407,7 @@
       </div>
 
       <!-- Hider Tools -->
-      <div class="section" data-tool-section="true">
+      <div class="section hider" data-tool-section="true">
         <details class="layers-details">
           <summary class="section-title">HIDER TOOLS</summary>
 
@@ -532,17 +533,7 @@
       </button>
     </div>
 
-    <!-- ════════ MAP STYLE FAB ════════ -->
-    <button
-      id="styleFab"
-      onclick="toggleStylePopover(this)"
-      data-i18n-title="fab_style_title"
-      title="Choose map style"
-      aria-label="Choose map style"
-    >
-      🗺
-    </button>
-
+    <!-- ════════ MAP STYLE POPOVER (moved to Setup) ════════ -->
     <div id="stylePopover">
       <div class="pp-label" data-i18n="style_label">Map style</div>
       <button
@@ -613,49 +604,7 @@
       </button>
     </div>
 
-    <!-- ════════ PRINT FAB ════════ -->
-    <button
-      id="printFab"
-      onclick="printMap()"
-      data-i18n-title="fab_print_title"
-      title="Print / Save as PDF"
-      aria-label="Print / Save as PDF"
-    >
-      🖨
-    </button>
-
-    <!-- ════════ PERMALINK FAB ════════ -->
-    <button
-      id="permalinkFab"
-      onclick="copyPermalink()"
-      data-i18n-title="fab_permalink_title"
-      title="Copy link"
-      aria-label="Copy link"
-    >
-      🔗
-    </button>
-
-    <!-- ════════ EXPORT / IMPORT STATE FABs ════════ -->
-    <button
-      id="exportStateFab"
-      onclick="exportMapState()"
-      data-i18n-title="fab_export_state"
-      title="Export map state"
-      aria-label="Export map state"
-    >
-      📦
-    </button>
-
-    <button
-      id="importStateFab"
-      onclick="document.getElementById('importStateInput').click()"
-      data-i18n-title="fab_import_state"
-      title="Import map state"
-      aria-label="Import map state"
-    >
-      📥
-    </button>
-
+    <!-- Print/Permalink/Export/Import FABs removed (moved to Setup) -->
     <input id="importStateInput" type="file" accept="application/json" style="display:none" onchange="handleImportStateFile(event)" />
 
     <!-- ════════ LOCATE FAB ════════ -->
@@ -1075,9 +1024,11 @@
     <!-- allowed game area (mask + containment)      -->
     <script src="js/busroutes.js"></script>
     <!-- bus route lines                             -->
+    <script src="js/marker.js"></script>
+    <!-- shared draggable marker helpers             -->
     <script src="js/radius.js"></script>
     <script src="js/occlusion.js"></script>
-    <script src="js/radiusquestions.js"></script>
+    <script src="js/radar.js"></script>
     <!-- radius tool, clickedPoint                   -->
     <script src="js/measure.js"></script>
     <!-- distance & direction, map.on('click', …)    -->

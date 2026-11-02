@@ -1,9 +1,11 @@
 # Jet Lag Maps – Hide & Seek
 
+> A fork of Cniehaus's Jet Lag Maps - reworked ui and user flow, cleaning up user experience.
+
 > An interactive map tool for the board game [Jet Lag: The Game – Hide & Seek](https://store.nebula.tv/collections/jetlag/products/hideandseek).
 > Plan your game with live OpenStreetMap data: city boundaries, postal codes, hospitals, train stations, bus lines, and much more – fully printable as A4 PDF. Includes a colour-blind safe palette.
 
-**[▶ Open the live app](https://cniehaus.github.io/hideandseek-map/)**
+**[▶ Open the live app](https://patokyo.github.io/hideandseek-map/)**
 
 ![Preview](og-preview.png)
 
@@ -30,11 +32,11 @@ Clicking any **bus stop** shows a popup listing every bus line that serves it �
 
 ### City boundary layer
 
-Toggle the **Stadtgrenze / City Boundary** layer to draw the administrative outline of the searched city as a thick dashed line with no fill. Useful for quickly checking whether the hider is still inside the game area. The boundary is fetched using the exact OSM relation ID returned by Nominatim, so it matches the city precisely.
+Toggle the **City Boundary** layer to draw the administrative outline of the searched city as a thick dashed line with no fill. Useful for quickly checking whether the hider is still inside the game area. The boundary is fetched using the exact OSM relation ID returned by Nominatim, so it matches the city precisely.
 
-### Bus route lines
+### Transit route lines
 
-Draw any bus (or tram) line by number directly on the map. Type a line number such as **305** in the _Bus-Linien_ section and click _Einzeichnen_ – the full route appears as a coloured line. Multiple lines can be shown at once, each with its own colour.
+Draw any transit line by number directly on the map. Type a line number such as **305** in the transit route section – the full route appears as a coloured line. Multiple lines can be shown at once, each with its own colour.
 
 ### Radius & interval tool
 
@@ -183,44 +185,13 @@ npx serve .                   # Node.js
 
 Contributions are very welcome! Here are the most impactful areas.
 
-### Add a new map layer (easiest start)
-
-Each layer is a single object in `LAYER_DEFS` inside `js/layers.js`. To add one:
-
-1. Pick an [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) query that returns the features you want.
-
-2. Add an entry to `LAYER_DEFS`:
-
-   ```js
-   // js/layers.js
-   my_layer: {
-       label: 'lyr_my_layer',       // translation key
-       color: '#a855f7',            // marker / polygon colour
-       icon:  '🏪',                 // emoji shown in popups
-       buildQuery: (bb) => `[out:json][timeout:60];
-   (
-     node(${bb[0]},${bb[2]},${bb[1]},${bb[3]})["amenity"="my_tag"];
-     way(${bb[0]},${bb[2]},${bb[1]},${bb[3]})["amenity"="my_tag"];
-   );
-   out center bb tags;`,
-       render: renderPOIs,          // use renderPOIs for point features
-   },
-   ```
-
-3. Add a checkbox to `index.html` (copy any existing `<label class="layer-row">` block).
-
-4. Add translation strings to both `langs/de.js` and `langs/en.js`.
-
-That's it – no other code changes needed.
-
-### Other good first issues
+### Good first issues
 
 - **New map style** – add a tile provider to `TILE_LAYERS` in `js/config.js` and a button to the style popover in `index.html`
 - **Additional languages** – create `langs/xx.js` following the same structure as `de.js`, add the detection logic in `index.html` (`<head>`)
 - **Improved Overpass queries** – the existing queries are functional but not exhaustive; PRs that improve recall or reduce noise are welcome
 - **Mobile UX** – layout and touch behaviour on small screens can always improve
 - **Accessibility** – ARIA labels, keyboard navigation, colour-contrast improvements
-- **Additional colour themes** – add a third entry to `COLOR_THEMES` in `js/config.js` (e.g. a high-contrast theme) and a button in the style popover; the rest of the system picks it up automatically
 
 ### Sending a Pull Request
 
@@ -229,7 +200,7 @@ That's it – no other code changes needed.
 3. Make your changes – no build step required
 4. Open a Pull Request against `main` and describe what you changed and why
 
-Please keep PRs focused: one layer (or one feature) per PR makes review much faster.
+Please keep PRs focused: one feature per PR makes review much faster.
 
 ---
 
