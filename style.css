@@ -461,6 +461,19 @@ body.setup-mode #layerPanel {
     font-weight: 400 !important;
 }
 
+/* Text/number inputs in non-colored sidebar sections keep their dark background,
+   so undo the black text forced above (e.g. Game Area and Transit Lines inputs) */
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='text'],
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='number'] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='text']::placeholder,
+#sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) input[type='number']::placeholder {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
 /* Small text in the header should be white (subtitle under Jet Lag Maps) */
 .s-header small {
     color: #ffffff !important;
