@@ -90,10 +90,8 @@ const LANG_DE = {
     btn_clear_meas:       'Messung löschen',
     btn_clear_all:        'Alles zurücksetzen',
     status_all_cleared:   'Alles zurückgesetzt',
-    btn_export_game_state: 'Spielstand exportieren',
-    btn_import_game_state: 'Spielstand importieren',
-    game_state_hint:
-        'Speichert Karte und alle offenen Fragen – nach dem Neuladen auf dem Handy laden, um die Runde fortzusetzen.',
+    btn_export_game_state: 'Exportieren',
+    btn_import_game_state: 'Importieren',
     status_game_exported: 'Spielstand exportiert',
     status_game_imported: 'Spielstand importiert',
     status_state_imported: 'Zustand importiert',

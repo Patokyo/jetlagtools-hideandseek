@@ -90,10 +90,8 @@ const LANG_EN = {
     btn_clear_meas: 'Clear measurement',
     btn_clear_all: 'Reset everything',
     status_all_cleared: 'Everything cleared',
-    btn_export_game_state: 'Export game state',
-    btn_import_game_state: 'Import game state',
-    game_state_hint:
-        'Saves the map and all open questions, so a page reload on a phone does not lose the round.',
+    btn_export_game_state: 'Export',
+    btn_import_game_state: 'Import',
     status_game_exported: 'Game state exported',
     status_game_imported: 'Game state imported',
     status_state_imported: 'State imported',

@@ -330,17 +330,22 @@ async function loadFromPermalink() {
         await tentImportState(q.tentacles);
 
         updatePermalink();
-        setStatus(t('status_game_imported') || 'Game state imported', 'ok');
+        setStatus(
+            state.questions
+                ? t('status_game_imported') || 'Game state imported'
+                : t('status_state_imported') || 'State imported',
+            'ok',
+        );
     }
 
     function handleImportStateFile(e) {
         const f = e.target.files?.[0];
         if (!f) return;
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
             try {
-                const obj = JSON.parse(reader.result);
-                importMapState(obj);
+                // Handles map-only files and game-state files (map + questions)
+                await importGameState(JSON.parse(reader.result));
             } catch (err) {
                 showErrorPopup('Invalid state file');
             }
