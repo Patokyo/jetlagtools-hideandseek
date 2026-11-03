@@ -33,7 +33,6 @@ function setUnits(u) {
     document.getElementById('unitMi').className = u === 'imperial' ? '' : 'ghost';
     document.getElementById('unitLabelRadius').textContent = tf('lbl_radius', unitStr());
     document.getElementById('unitLabelStep').textContent = tf('lbl_step', unitStr());
-    updatePermalink();
 }
 
 // ── City search via Nominatim ─────────────────────────────────────────────────
@@ -90,7 +89,6 @@ async function searchCity() {
         }
 
         setStatus(tf('status_map', best.display_name.split(',')[0]), 'ok');
-        updatePermalink();
         reloadActiveBoundaryLayers();
     } catch (e) {
         setStatus(tf('status_err', e.message), 'error');

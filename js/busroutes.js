@@ -24,24 +24,29 @@ const TRANSIT_ROUTE_ICONS = {
 };
 const TRANSIT_ROUTE_REGEX = `^(${Object.keys(TRANSIT_ROUTE_ICONS).join('|')})$`;
 
-// ── Render route geometry from Overpass result ────────────────────────────────
-function renderBusRoute(data, color) {
-    const layers = [];
-    (data.elements ?? []).forEach((el) => {
+// ── Route geometry, reduced to type/name/paths ────────────────────────────────
+// Only the drawn coordinates are kept; all OSM tags are dropped after the fetch.
+function routePartsFromOverpass(data) {
+    const parts = [];
+    (data?.elements ?? []).forEach((el) => {
         if (el.type !== 'relation') return;
         const name = el.tags?.name ?? el.tags?.ref ?? '';
-        const icon = TRANSIT_ROUTE_ICONS[el.tags?.route] ?? '🚌';
+        const type = el.tags?.route ?? 'bus';
         (el.members ?? []).forEach((m) => {
             if (m.type !== 'way' || !m.geometry?.length) return;
-            const line = L.polyline(
-                m.geometry.map((p) => [p.lat, p.lon]),
-                { color, weight: 5, opacity: 0.85 },
-            );
-            line.bindPopup(`<div class="popup-name">${icon} ${esc(name)}</div>`);
-            layers.push(line);
+            parts.push({ name, type, points: m.geometry.map((p) => [p.lat, p.lon]) });
         });
     });
-    return layers;
+    return parts;
+}
+
+function renderBusRouteParts(parts, color) {
+    return (parts ?? []).map((part) => {
+        const line = L.polyline(part.points, { color, weight: 5, opacity: 0.85 });
+        const icon = TRANSIT_ROUTE_ICONS[part.type] ?? '🚌';
+        line.bindPopup(`<div class="popup-name">${icon} ${esc(part.name)}</div>`);
+        return line;
+    });
 }
 
 // ── Sidebar list (the top entry is drawn above the ones below it) ────────────
@@ -76,7 +81,6 @@ function createBusRouteListEntry(id) {
         route.layers.forEach((l) => l.setStyle?.({ color: newColor }));
         const dot = item.querySelector('.dot');
         if (dot) dot.style.background = newColor;
-        updatePermalink();
     });
 
     return item;
@@ -113,7 +117,6 @@ function applyBusRouteOrderFromDom() {
     if (!list) return;
     busRouteOrder = [...list.querySelectorAll('[data-route-id]')].map((el) => Number(el.dataset.routeId));
     applyBusRouteZOrder();
-    updatePermalink();
 }
 
 // Drag the ⠿ handle to change which line is drawn on top
@@ -189,7 +192,8 @@ out geom;`;
             return;
         }
 
-        const layers = renderBusRoute(data, color);
+        const parts = routePartsFromOverpass(data);
+        const layers = renderBusRouteParts(parts, color);
         if (!layers.length) {
             setStatus(tf('status_route_no_geom', ref), 'error');
             busRouteCounter--;
@@ -199,14 +203,13 @@ out geom;`;
         layers.forEach((l) => l.addTo(map));
 
         const routeName = data.elements[0]?.tags?.name ?? ref;
-        busRouteItems[id] = { layers, color, name: routeName, ref, custom: false };
-        busRouteItems[id].data = data; // Store the original Overpass response
+        const routeType = data.elements[0]?.tags?.route ?? 'bus';
+        busRouteItems[id] = { layers, color, name: routeName, ref, type: routeType, parts, custom: false };
         busRouteRefs.add(ref);
 
         addBusRouteToList(id);
         setStatus(tf('status_route_loaded', ref, data.elements.length), 'ok');
         input.value = '';
-        updatePermalink();
     } catch (e) {
         setStatus(t('status_err_popup'), 'error');
         showErrorPopup(tf('err_busroute', ref, e.message));
@@ -222,7 +225,6 @@ function removeBusRoute(id) {
     delete busRouteItems[id];
     busRouteOrder = busRouteOrder.filter((routeId) => routeId !== id);
     document.getElementById('br-' + id)?.remove();
-    updatePermalink();
 }
 
 // ── Remove all bus routes ─────────────────────────────────────────────────────

@@ -37,6 +37,7 @@ function hiderUpdatePoiList() {
     // Cache the station list (sorted alphabetically) so the combobox can filter
     // it without re-scanning the layer every keystroke. `idx` keeps the original
     // position in layerDataCache.stations.elements, which hiderCreateZone() uses.
+    // Cached elements are normalised: { type, name, lat, lng } with no OSM tags.
     _hiderStations = [];
 
     const layerId = 'stations';
@@ -45,7 +46,7 @@ function hiderUpdatePoiList() {
         data.elements.forEach((el, idx) => {
             const center = getElementCenter(el);
             if (!center) return;
-            const name = el.tags?.name ?? el.tags?.['name:de'] ?? 'Unnamed Station';
+            const name = el.name || 'Unnamed Station';
             _hiderStations.push({ idx, name });
         });
         _hiderStations.sort((a, b) =>
@@ -257,7 +258,7 @@ function hiderCalculateNearest() {
     });
 
     if (nearest) {
-        const name = nearest.tags?.name ?? 'Unnamed POI';
+        const name = nearest.name || 'Unnamed POI';
         document.getElementById('hider-result').innerHTML =
             `Nearest: <strong>${esc(name)}</strong><br>${minDist.toFixed(3)} km away`;
     } else {
@@ -310,7 +311,7 @@ function hiderCreateZone() {
             { maxZoom: 17 }
         );
 
-        setStatus(`Hiding zone created around ${esc(el.tags?.name ?? 'Station')}`, 'ok');
+        setStatus(`Hiding zone created around ${esc(el.name || 'Station')}`, 'ok');
     } else {
         setStatus('Failed to create hiding zone', 'error');
     }

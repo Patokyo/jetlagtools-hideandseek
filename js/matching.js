@@ -251,7 +251,7 @@ async function mqRun(id) {
         .map((el) => {
             const c = getElementCenter(el);
             if (!c) return null;
-            return { id: el.id, lat: c.lat, lng: c.lng, name: el.tags?.name ?? '' };
+            return { id: poiKey(c.lat, c.lng), lat: c.lat, lng: c.lng, name: el.name ?? '' };
         })
         .filter(Boolean);
 
@@ -314,4 +314,43 @@ async function mqRun(id) {
 
 
     setStatus(t('status_ready'), 'ok');
+}
+
+// ── Game-state export / restore ───────────────────────────────────────────────
+// Only the question inputs and lock state are stored; the Voronoi mask is
+// rebuilt from the cached layer on import, so nothing heavy goes into the file.
+function matchingExportState() {
+    return _matchingQuestions.map((q) => ({
+        layerId: q.layerId,
+        lat: q.lat,
+        lng: q.lng,
+        answerYes: q.answerYes,
+        confirmed: q.confirmed,
+    }));
+}
+
+async function matchingImportState(list) {
+    if (!Array.isArray(list)) return;
+    clearAllMatchingQuestions();
+
+    for (const s of list) {
+        const id = _matchingNextId++;
+        const q = {
+            id,
+            layerId: s.layerId ?? null,
+            lat: typeof s.lat === 'number' ? s.lat : null,
+            lng: typeof s.lng === 'number' ? s.lng : null,
+            answerYes: s.answerYes !== false,
+            maskLayer: null,
+            outlines: [],
+            confirmed: false,
+        };
+        _matchingQuestions.push(q);
+        _mqRenderCards();
+
+        const hasLayer = q.layerId && layerDataCache[q.layerId]?.elements?.length;
+        if (hasLayer && q.lat !== null && q.lng !== null) await mqRun(id);
+        if (s.confirmed) mqConfirm(id);
+    }
+    _mqRenderCards();
 }

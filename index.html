@@ -478,6 +478,25 @@
         </details>
       </div>
 
+      <!-- Game state export / import (map + open questions) -->
+      <div class="section" data-tool-section="true">
+        <div class="row" style="gap:6px">
+          <button style="flex:1" onclick="exportGameState()" data-i18n="btn_export_game_state">
+            Export
+          </button>
+          <button class="ghost" style="flex:1" onclick="triggerImportGameState()" data-i18n="btn_import_game_state">
+            Import
+          </button>
+        </div>
+        <input
+          type="file"
+          id="gameStateFileInput"
+          accept="application/json,.json"
+          style="display: none"
+          onchange="handleImportGameStateFile(event)"
+        />
+      </div>
+
       <!-- Clear all -->
       <div class="section" data-tool-section="true">
         <button class="danger" style="width: 100%" onclick="clearAll()" data-i18n="btn_clear_all">
@@ -615,7 +634,7 @@
       </button>
     </div>
 
-    <!-- Print/Permalink/Export/Import FABs removed (moved to Setup) -->
+    <!-- Print/Export/Import FABs removed (moved to Setup) -->
     <input id="importStateInput" type="file" accept="application/json" style="display:none" onchange="handleImportStateFile(event)" />
 
     <!-- ════════ LOCATE FAB ════════ -->
@@ -1060,8 +1079,8 @@
     <script src="js/measuring.js"></script>
     <script src="js/thermometer.js"></script>
     <script src="js/hidertools.js"></script>
-    <script src="js/permalink.js"></script>
-    <!-- URL state serialisation / restore           -->
+    <script src="js/statefile.js"></script>
+    <!-- state export/import + local auto-save       -->
     <script src="js/changelog.js"></script>
     <!-- changelog entries                           -->
 
@@ -1072,8 +1091,8 @@
       applyI18n();
       initColorMode();
       renderSetupPoiLayerList();
-      syncGameLayerPanel();
-      loadFromPermalink();
+      renderGamePoiLayerPanel();
+      restoreSavedState();
       renderChangelog();
     </script>
   </body>

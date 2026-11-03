@@ -252,7 +252,7 @@ async function measRun(id) {
         .map((el) => {
             const c = getElementCenter(el);
             if (!c) return null;
-            return { id: el.id, lat: c.lat, lng: c.lng };
+            return { id: poiKey(c.lat, c.lng), lat: c.lat, lng: c.lng };
         })
         .filter(Boolean);
 
@@ -301,4 +301,43 @@ async function measRun(id) {
     }
 
     setStatus(t('status_ready'), 'ok');
+}
+
+// ── Game-state export / restore ───────────────────────────────────────────────
+// Only the question inputs and lock state are stored; the mask is rebuilt from
+// the cached layer on import.
+function measuringExportState() {
+    return _measQuestions.map((q) => ({
+        layerId: q.layerId,
+        lat: q.lat,
+        lng: q.lng,
+        answer: q.answer,
+        confirmed: q.confirmed,
+    }));
+}
+
+async function measuringImportState(list) {
+    if (!Array.isArray(list)) return;
+    clearAllMeasuringQuestions();
+
+    for (const s of list) {
+        const id = _measNextId++;
+        const q = {
+            id,
+            layerId: s.layerId ?? null,
+            lat: typeof s.lat === 'number' ? s.lat : null,
+            lng: typeof s.lng === 'number' ? s.lng : null,
+            answer: s.answer === 'closer' || s.answer === 'further' ? s.answer : null,
+            maskLayer: null,
+            marker: null,
+            confirmed: false,
+        };
+        _measQuestions.push(q);
+        _measRenderCards();
+
+        const hasLayer = q.layerId && layerDataCache[q.layerId]?.elements?.length;
+        if (hasLayer && q.lat !== null && q.lng !== null) await measRun(id);
+        if (s.confirmed) measConfirm(id);
+    }
+    _measRenderCards();
 }

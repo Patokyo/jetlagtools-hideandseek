@@ -96,7 +96,7 @@ hideandseek-map/
     ├── boundarylayers.js # nominatimBoundaryLayer() – fetch + draw OSM boundary polygons
     ├── admin.js        # Administrative division checker (reverse-geocode + level comparison)
     ├── tentacles.js    # Tentacle / Voronoi question tool
-    ├── permalink.js    # Shareable URL state
+    ├── statefile.js    # Export/import state + local auto-save (IndexedDB)
     └── ui.js           # Sidebar, print, error popup, style FAB, setColorMode()
 ```
 
