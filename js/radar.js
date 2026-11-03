@@ -121,7 +121,6 @@ function _rqDrawQuestion(q) {
             q.lng = c.lng;
             _rqRenderCards();
             _rqUpdateOverlay();
-            updatePermalink();
         });
         q.handle = handle;
     } else {
@@ -160,7 +159,6 @@ function _rqSetCenter(q, lat, lng) {
     _rqRenderCards();
     _rqDrawQuestion(q);
     _rqUpdateOverlay();
-    updatePermalink();
 }
 
 // ── Public API (sidebar) ──────────────────────────────────────────────────────
@@ -182,7 +180,6 @@ function removeRadiusQuestion(id) {
     _rqQuestions.splice(idx, 1);
     _rqRenderCards();
     _rqUpdateOverlay();
-    updatePermalink();
 }
 
 function clearAllRadiusQuestions() {
@@ -190,7 +187,6 @@ function clearAllRadiusQuestions() {
     _rqQuestions.length = 0;
     _rqRenderCards();
     _rqUpdateOverlay();
-    updatePermalink();
 }
 
 function rqSetRadius(id, val) {
@@ -201,7 +197,6 @@ function rqSetRadius(id, val) {
     q.km = toKm(v);
     _rqDrawQuestion(q);
     _rqUpdateOverlay();
-    updatePermalink();
 }
 
 function rqSetAnswer(id, answer) {
@@ -212,7 +207,6 @@ function rqSetAnswer(id, answer) {
     _rqRenderCards();
     _rqDrawQuestion(q);
     _rqUpdateOverlay();
-    updatePermalink();
 }
 
 function rqConfirm(id) {
@@ -250,38 +244,6 @@ function rqUseGeo(id) {
     }
     const c = geoMarker.getLatLng();
     _rqSetCenter(q, c.lat, c.lng);
-}
-
-// ── Permalink serialisation / restore ─────────────────────────────────────────
-// Format: lat,lng,km,y|n
-function rqSerialise() {
-    return _rqQuestions
-        .filter((q) => q.lat !== null)
-        .map((q) =>
-            [q.lat.toFixed(5), q.lng.toFixed(5), q.km, q.answer === 'yes' ? 'y' : 'n'].join(','),
-        );
-}
-
-function rqRestoreFromPermalink(params) {
-    for (const s of params) {
-        const [latStr, lngStr, kmStr, ans] = s.split(',');
-        const lat = parseFloat(latStr);
-        const lng = parseFloat(lngStr);
-        const km = parseFloat(kmStr);
-        if (isNaN(lat) || isNaN(lng) || isNaN(km) || km <= 0) continue;
-        const q = {
-            id: _rqNextId++,
-            km,
-            answer: ans === 'n' ? 'no' : 'yes',
-            lat,
-            lng,
-            layers: [],
-        };
-        _rqQuestions.push(q);
-        _rqDrawQuestion(q);
-    }
-    _rqRenderCards();
-    _rqUpdateOverlay();
 }
 
 // ── Render question cards ─────────────────────────────────────────────────────

@@ -103,7 +103,6 @@ async function _tentFetchPOIs(id) {
             tf('tent_status_found', q.fetchedPOIs.length, t(label)),
             'ok',
         );
-        updatePermalink();
     } catch (err) {
         if (sel) {
             sel.innerHTML = `<option value="">${t('tent_error')}</option>`;
@@ -138,7 +137,6 @@ function _tentCreateDraggableMarker(q, id) {
         q.centerLng = p.lng;
         _tentDraw(id);
         _tentFetchPOIs(id);
-        updatePermalink();
     });
 }
 
@@ -304,14 +302,12 @@ function removeTentacleQuestion(id) {
     _tentClearLayers(_tentQuestions[idx]);
     _tentQuestions.splice(idx, 1);
     _tentRenderCards();
-    updatePermalink();
 }
 
 function clearAllTentacles() {
     _tentQuestions.forEach(_tentClearLayers);
     _tentQuestions.length = 0;
     _tentRenderCards();
-    updatePermalink();
 }
 
 function tentSetRadius(id, val) {
@@ -354,7 +350,6 @@ function tentConfirm(id) {
     }
     _tentDraw(id);
     _tentRenderCards();
-    updatePermalink();
 }
 
 function _tentSetCenter(q, lat, lng, id) {
@@ -363,7 +358,6 @@ function _tentSetCenter(q, lat, lng, id) {
     _tentRenderCards();
     _tentDraw(id);
     _tentFetchPOIs(id);
-    updatePermalink();
 }
 
 function tentStartPick(id) {
@@ -392,56 +386,6 @@ function tentSelectPOI(id, val) {
     q.selectedPOI = q.fetchedPOIs.find((p) => String(p.id) === String(val)) ?? null;
     if (q.selectedPOI) _tentDraw(id);
     else _tentClearLayers(q);
-    updatePermalink();
-}
-
-// ── Permalink serialisation / restore ────────────────────────────────────────
-function tentSerialise() {
-    return _tentQuestions
-        .filter((q) => q.centerLat !== null)
-        .map((q) =>
-            [
-                q.poiLayerId,
-                q.radius,
-                q.unit,
-                q.centerLat.toFixed(5),
-                q.centerLng.toFixed(5),
-                q.selectedPOI?.id ?? 0,
-                q.confirmed ? '1' : '0',
-            ].join(','),
-        );
-}
-
-async function tentRestoreFromPermalink(params) {
-    for (const s of params) {
-        const parts = s.split(',');
-        if (parts.length < 7) continue;
-        const [poiLayerId, radiusStr, unit, latStr, lngStr, poiIdStr, confStr] = parts;
-        if (!LAYER_DEFS[poiLayerId]) continue;
-        const lat = parseFloat(latStr);
-        const lng = parseFloat(lngStr);
-        const radius = parseFloat(radiusStr);
-        if (isNaN(lat) || isNaN(lng) || isNaN(radius)) continue;
-
-        const id = _tentNextId++;
-        _tentQuestions.push({
-            id,
-            radius,
-            unit: unit === 'mi' ? 'mi' : 'km',
-            poiLayerId,
-            centerLat: lat,
-            centerLng: lng,
-            selectedPOI: null,
-            fetchedPOIs: [],
-            layers: [],
-            confirmed: confStr === '1',
-        });
-        _tentRenderCards();
-        await _tentFetchPOIs(id);
-
-        const poiId = poiIdStr && poiIdStr !== '0' ? poiIdStr : null;
-        if (poiId) tentSelectPOI(id, poiId);
-    }
 }
 
 // ── Render question cards ─────────────────────────────────────────────────────

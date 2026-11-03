@@ -543,7 +543,6 @@ async function toggleSetupPoiLayer(id, enabled) {
     }
 
     renderSetupPoiLayerList();
-    updatePermalink();
     updateLayerFabBadge();
 }
 
@@ -568,7 +567,6 @@ async function toggleLayer(id, enabled) {
     }
 
     renderGamePoiLayerPanel();
-    updatePermalink();
     updateLayerFabBadge();
 }
 
@@ -666,7 +664,6 @@ function clearAllLayers() {
     document.querySelectorAll('[id^="lyr-"]').forEach((cb) => (cb.checked = false));
     renderSetupPoiLayerList();
     renderGamePoiLayerPanel();
-    updatePermalink();
     updateLayerFabBadge();
 }
 

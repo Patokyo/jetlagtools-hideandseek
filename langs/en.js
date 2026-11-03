@@ -95,6 +95,7 @@ const LANG_EN = {
     status_game_exported: 'Game state exported',
     status_game_imported: 'Game state imported',
     status_state_imported: 'State imported',
+    status_restored: 'Session restored',
     style_label: 'Map style',
     style_osm: 'OSM Standard',
     style_light: '☀️ Light (Positron)',
@@ -107,7 +108,7 @@ const LANG_EN = {
     color_mode_cb: 'Colour-blind safe',
     fab_print_title: 'Print / Save as PDF',
     fab_style_title: 'Choose map style',
-    fab_permalink_title: 'Copy link',
+
     fab_export_state: 'Export map state (JSON)',
     fab_import_state: 'Import map state (JSON)',
     status_ready: 'Ready',

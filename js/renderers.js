@@ -251,7 +251,6 @@ function renderPOIs(id, data, def) {
                             const n = layerDataCache[id]?.elements?.length ?? (activeLayers[id]?.length ?? 0);
                             cntEl.textContent = n > 0 ? `(${n})` : '';
                         }
-                        updatePermalink();
                     };
                 }
 
@@ -283,7 +282,6 @@ function renderPOIs(id, data, def) {
                                 const n = layerDataCache[id]?.elements?.length ?? (activeLayers[id]?.length ?? 0);
                                 cntEl.textContent = n > 0 ? `(${n})` : '';
                             }
-                            updatePermalink();
                         };
                     }
                     fetched = true;
@@ -305,7 +303,6 @@ function renderPOIs(id, data, def) {
                                 const n = layerDataCache[id]?.elements?.length ?? (activeLayers[id]?.length ?? 0);
                                 cntEl.textContent = n > 0 ? `(${n})` : '';
                             }
-                            updatePermalink();
                         };
                     }
                     fetched = true;
@@ -332,7 +329,6 @@ function renderPOIs(id, data, def) {
                         const n = layerDataCache[id]?.elements?.length ?? (activeLayers[id]?.length ?? 0);
                         cntEl.textContent = n > 0 ? `(${n})` : '';
                     }
-                    updatePermalink();
                 };
             });
         }

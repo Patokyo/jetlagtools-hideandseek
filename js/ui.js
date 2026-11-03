@@ -123,6 +123,8 @@ function clearAll() {
     clearAllRadii();
     clearAllRadiusQuestions();
     clearAllMatchingQuestions();
+    clearAllMeasuringQuestions();
+    clearAllThermometerQuestions();
     clearAllLayers();
     clearAllBoundaryLayers();
     if (clickMarker) {
@@ -131,7 +133,7 @@ function clearAll() {
     }
     clickedPoint = null;
     document.getElementById('clickCoords').textContent = t('coord_hint');
-    updatePermalink();
+    clearAutoSave();
     setStatus(t('status_all_cleared'), 'ok');
 }
 
@@ -184,7 +186,6 @@ function selectStyle(btn, key) {
     document.querySelectorAll('.style-opt').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('stylePopover').classList.remove('open');
-    updatePermalink();
 }
 
 registerPopoverClickOutside('stylePopover', ['styleFab', 'setupStyleBtn']);

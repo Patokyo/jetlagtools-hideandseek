@@ -81,7 +81,6 @@ function createBusRouteListEntry(id) {
         route.layers.forEach((l) => l.setStyle?.({ color: newColor }));
         const dot = item.querySelector('.dot');
         if (dot) dot.style.background = newColor;
-        updatePermalink();
     });
 
     return item;
@@ -118,7 +117,6 @@ function applyBusRouteOrderFromDom() {
     if (!list) return;
     busRouteOrder = [...list.querySelectorAll('[data-route-id]')].map((el) => Number(el.dataset.routeId));
     applyBusRouteZOrder();
-    updatePermalink();
 }
 
 // Drag the ⠿ handle to change which line is drawn on top
@@ -212,7 +210,6 @@ out geom;`;
         addBusRouteToList(id);
         setStatus(tf('status_route_loaded', ref, data.elements.length), 'ok');
         input.value = '';
-        updatePermalink();
     } catch (e) {
         setStatus(t('status_err_popup'), 'error');
         showErrorPopup(tf('err_busroute', ref, e.message));
@@ -228,7 +225,6 @@ function removeBusRoute(id) {
     delete busRouteItems[id];
     busRouteOrder = busRouteOrder.filter((routeId) => routeId !== id);
     document.getElementById('br-' + id)?.remove();
-    updatePermalink();
 }
 
 // ── Remove all bus routes ─────────────────────────────────────────────────────

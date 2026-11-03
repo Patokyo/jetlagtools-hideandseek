@@ -95,6 +95,7 @@ const LANG_DE = {
     status_game_exported: 'Spielstand exportiert',
     status_game_imported: 'Spielstand importiert',
     status_state_imported: 'Zustand importiert',
+    status_restored: 'Sitzung wiederhergestellt',
     style_label:          'Kartenstil',
     style_osm:            'OSM Standard',
     style_light:          '☀️ Hell (Positron)',
@@ -107,7 +108,7 @@ const LANG_DE = {
     color_mode_cb:        'Farbenblind-sicher',
     fab_print_title:      'Als PDF drucken',
     fab_style_title:      'Kartenstil wählen',
-    fab_permalink_title:  'Link kopieren',
+
     fab_export_state:     'Kartenzustand exportieren (JSON)',
     fab_import_state:     'Kartenzustand importieren (JSON)',
     status_ready:         'Bereit',

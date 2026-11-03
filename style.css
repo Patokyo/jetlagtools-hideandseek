@@ -1204,7 +1204,6 @@ button.meas-active:hover {
 #exportStateFab,
 #importStateFab,
 #boundaryFab,
-#permalinkFab,
 #layerFab,
 #locateFab {
     position: fixed;
@@ -1245,16 +1244,11 @@ button.meas-active:hover {
 #layerFab {
     color: #ffffff;
 }
-/* Keep permalink/export offsets if they reappear */
-#permalinkFab {
-    bottom: 192px;
-}
 #printFab:hover,
 #exportStateFab:hover,
 #importStateFab:hover,
 #styleFab:hover,
 #boundaryFab:hover,
-#permalinkFab:hover,
 #layerFab:hover,
 #locateFab:hover {
     background: #21262d;

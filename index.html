@@ -634,7 +634,7 @@
       </button>
     </div>
 
-    <!-- Print/Permalink/Export/Import FABs removed (moved to Setup) -->
+    <!-- Print/Export/Import FABs removed (moved to Setup) -->
     <input id="importStateInput" type="file" accept="application/json" style="display:none" onchange="handleImportStateFile(event)" />
 
     <!-- ════════ LOCATE FAB ════════ -->
@@ -1079,8 +1079,8 @@
     <script src="js/measuring.js"></script>
     <script src="js/thermometer.js"></script>
     <script src="js/hidertools.js"></script>
-    <script src="js/permalink.js"></script>
-    <!-- URL state serialisation / restore           -->
+    <script src="js/statefile.js"></script>
+    <!-- state export/import + local auto-save       -->
     <script src="js/changelog.js"></script>
     <!-- changelog entries                           -->
 
@@ -1091,8 +1091,8 @@
       applyI18n();
       initColorMode();
       renderSetupPoiLayerList();
-      syncGameLayerPanel();
-      loadFromPermalink();
+      renderGamePoiLayerPanel();
+      restoreSavedState();
       renderChangelog();
     </script>
   </body>

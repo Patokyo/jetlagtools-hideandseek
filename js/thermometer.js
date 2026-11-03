@@ -193,7 +193,6 @@ function _thermDrawGuide(id) {
                 _thermUpdateGuideElements(id);
                 _thermDrawOcclusion(id);
                 _thermRenderCards();
-                updatePermalink();
             });
     }
 
@@ -227,7 +226,6 @@ function _thermDrawGuide(id) {
 
             q.markerB.on('dragend', () => {
                 _thermRenderCards();
-                updatePermalink();
             });
         } else {
             q.markerB.setLatLng(pointB);
@@ -512,7 +510,6 @@ function _thermSetPointA(q, lat, lng, id) {
     _thermRenderCards();
     _thermDrawGuide(id);
     _thermDrawOcclusion(id);
-    updatePermalink();
 }
 
 // ── Map click hook ────────────────────────────────────────────────────────────
