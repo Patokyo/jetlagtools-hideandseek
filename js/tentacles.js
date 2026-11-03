@@ -518,3 +518,49 @@ function _tentRenderCards() {
         })
         .join('');
 }
+
+// ── Game-state export / restore ───────────────────────────────────────────────
+// The POI list is rebuilt from the cached layer, so only the chosen POI id is
+// stored alongside the question's inputs.
+function tentExportState() {
+    return _tentQuestions.map((q) => ({
+        poiLayerId: q.poiLayerId,
+        radius: q.radius,
+        unit: q.unit,
+        centerLat: q.centerLat,
+        centerLng: q.centerLng,
+        selectedPOIId: q.selectedPOI?.id ?? null,
+        confirmed: !!q.confirmed,
+    }));
+}
+
+async function tentImportState(list) {
+    if (!Array.isArray(list)) return;
+    clearAllTentacles();
+
+    for (const s of list) {
+        if (!LAYER_DEFS[s.poiLayerId]) continue;
+        const id = _tentNextId++;
+        const q = {
+            id,
+            radius: Number(s.radius) > 0 ? Number(s.radius) : 15,
+            unit: s.unit === 'mi' ? 'mi' : 'km',
+            poiLayerId: s.poiLayerId,
+            centerLat: typeof s.centerLat === 'number' ? s.centerLat : null,
+            centerLng: typeof s.centerLng === 'number' ? s.centerLng : null,
+            selectedPOI: null,
+            fetchedPOIs: [],
+            layers: [],
+            marker: null,
+            confirmed: !!s.confirmed,
+        };
+        _tentQuestions.push(q);
+        _tentRenderCards();
+
+        if (q.centerLat !== null && q.centerLng !== null) {
+            await _tentFetchPOIs(id);
+            if (s.selectedPOIId) tentSelectPOI(id, s.selectedPOIId);
+        }
+    }
+    _tentRenderCards();
+}

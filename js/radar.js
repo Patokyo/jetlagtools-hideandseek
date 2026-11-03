@@ -332,3 +332,38 @@ function _rqRenderCards() {
         })
         .join('');
 }
+
+// ── Game-state export / restore ───────────────────────────────────────────────
+// Radii are stored in km internally, so no unit conversion is needed.
+function rqExportState() {
+    return _rqQuestions.map((q) => ({
+        km: q.km,
+        lat: q.lat,
+        lng: q.lng,
+        answer: q.answer,
+        confirmed: q.confirmed,
+    }));
+}
+
+function rqImportState(list) {
+    if (!Array.isArray(list)) return;
+    clearAllRadiusQuestions();
+
+    for (const s of list) {
+        const km = Number(s.km);
+        const q = {
+            id: _rqNextId++,
+            km: km > 0 ? km : 1,
+            answer: s.answer === 'yes' || s.answer === 'no' ? s.answer : null,
+            lat: typeof s.lat === 'number' ? s.lat : null,
+            lng: typeof s.lng === 'number' ? s.lng : null,
+            layers: [],
+            confirmed: !!s.confirmed,
+            handle: null,
+        };
+        _rqQuestions.push(q);
+        _rqDrawQuestion(q);
+    }
+    _rqRenderCards();
+    _rqUpdateOverlay();
+}

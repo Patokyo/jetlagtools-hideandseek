@@ -195,7 +195,7 @@ async function loadFromPermalink() {
 }
 
     // ── Export / Import map state (JSON) ────────────────────────────────────────
-    function exportMapState() {
+    function buildMapState() {
         const state = {
             version: 1,
             view: (() => {
@@ -251,15 +251,86 @@ async function loadFromPermalink() {
             });
         } catch (_) {}
 
+        return state;
+    }
+
+    function downloadStateFile(state, filename) {
         const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `hideandseek-map-state-${new Date().toISOString().slice(0, 19)}.json`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    function exportMapState() {
+        downloadStateFile(
+            buildMapState(),
+            `hideandseek-map-state-${new Date().toISOString().slice(0, 19)}.json`,
+        );
+    }
+
+    // ── Game state (map + every open question) ─────────────────────────────────
+    // The question modules store only their inputs and lock state; geometry and
+    // masks are rebuilt from the restored layers, so the file stays small.
+    function exportGameState() {
+        const state = buildMapState();
+        state.questions = {
+            matching: matchingExportState(),
+            measuring: measuringExportState(),
+            thermometer: thermExportState(),
+            radar: rqExportState(),
+            tentacles: tentExportState(),
+        };
+        downloadStateFile(
+            state,
+            `hideandseek-game-state-${new Date().toISOString().slice(0, 19)}.json`,
+        );
+        setStatus(t('status_game_exported') || 'Game state exported', 'ok');
+    }
+
+    function triggerImportGameState() {
+        document.getElementById('gameStateFileInput')?.click();
+    }
+
+    function handleImportGameStateFile(e) {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = async () => {
+            try {
+                await importGameState(JSON.parse(reader.result));
+            } catch (err) {
+                showErrorPopup('Invalid state file');
+            }
+        };
+        reader.readAsText(f);
+        // reset input so selecting same file again triggers change
+        e.target.value = '';
+    }
+
+    async function importGameState(state) {
+        if (!state || state.version !== 1) {
+            showErrorPopup('Unsupported state file');
+            return;
+        }
+
+        // Restores city, view, cached layers, game zone and bus routes first, so
+        // the questions can rebuild their masks from the cached layers.
+        await importMapState(state);
+
+        const q = state.questions ?? {};
+        await matchingImportState(q.matching);
+        await measuringImportState(q.measuring);
+        thermImportState(q.thermometer);
+        rqImportState(q.radar);
+        await tentImportState(q.tentacles);
+
+        updatePermalink();
+        setStatus(t('status_game_imported') || 'Game state imported', 'ok');
     }
 
     function handleImportStateFile(e) {
@@ -408,5 +479,5 @@ async function loadFromPermalink() {
         } catch (_) {}
 
         updatePermalink();
-        setStatus('State imported', 'ok');
+        setStatus(t('status_state_imported') || 'State imported', 'ok');
     }

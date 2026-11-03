@@ -598,3 +598,50 @@ function _thermRenderCards() {
         })
         .join('');
 }
+
+// ── Game-state export / restore ───────────────────────────────────────────────
+// Distances are stored in km, like the rest of the app.
+function thermExportState() {
+    return _thermQuestions.map((q) => ({
+        dist: q.dist,
+        lat: q.lat,
+        lng: q.lng,
+        latB: q.latB,
+        lngB: q.lngB,
+        answer: q.answer,
+        confirmed: q.confirmed,
+    }));
+}
+
+function thermImportState(list) {
+    if (!Array.isArray(list)) return;
+    clearAllThermometerQuestions();
+
+    for (const s of list) {
+        const id = _thermNextId++;
+        const num = (v) => (typeof v === 'number' ? v : null);
+        const q = {
+            id,
+            dist: Number(s.dist) > 0 ? Number(s.dist) : 1,
+            lat: num(s.lat),
+            lng: num(s.lng),
+            latB: num(s.latB),
+            lngB: num(s.lngB),
+            answer: s.answer === 'hotter' || s.answer === 'colder' ? s.answer : null,
+            layers: [],
+            maskLayer: null,
+            markerA: null,
+            markerB: null,
+            confirmed: false,
+        };
+        _thermQuestions.push(q);
+        _thermRenderCards();
+
+        if (q.lat !== null && q.lng !== null) {
+            _thermDrawGuide(id);
+            if (q.latB !== null && q.lngB !== null) _thermDrawOcclusion(id);
+        }
+        if (s.confirmed) thermConfirm(id);
+    }
+    _thermRenderCards();
+}
