@@ -66,6 +66,10 @@ function setStatus(msg, type = '') {
     const toast = document.getElementById('statusToast');
     toast.textContent = msg;
     toast.className = msg ? `show ${type}` : '';
+
+    // Nearly every finished operation (city search, layer load, question
+    // answer) reports here, so treat it as a state-change signal.
+    if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 // Escape HTML special characters (for popup content)
@@ -120,19 +124,12 @@ function clearAll() {
     clearNearestPOI();
     clearAllTentacles();
     clearAllBusRoutes();
-    clearAllRadii();
     clearAllRadiusQuestions();
     clearAllMatchingQuestions();
     clearAllMeasuringQuestions();
     clearAllThermometerQuestions();
     clearAllLayers();
     clearAllBoundaryLayers();
-    if (clickMarker) {
-        map.removeLayer(clickMarker);
-        clickMarker = null;
-    }
-    clickedPoint = null;
-    document.getElementById('clickCoords').textContent = t('coord_hint');
     clearAutoSave();
     setStatus(t('status_all_cleared'), 'ok');
 }

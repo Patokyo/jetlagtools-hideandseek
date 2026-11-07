@@ -39,8 +39,10 @@ function slRemoveMarkers() {
 
 function clearStationLength() {
     slRemoveMarkers();
-    document.getElementById('slLen').value = '';
-    document.getElementById('slResult').innerHTML = '';
+    const input = document.getElementById('slLen');
+    if (input) input.value = '';
+    const result = document.getElementById('slResult');
+    if (result) result.innerHTML = '';
     setStatus(t('status_ready'), '');
 }
 
@@ -181,8 +183,3 @@ async function runStationLengthCheck() {
         btn.disabled = false;
     }
 }
-
-// Trigger the check on Enter in the length field
-document.getElementById('slLen').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') runStationLengthCheck();
-});

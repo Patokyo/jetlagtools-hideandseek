@@ -170,9 +170,13 @@ function clearAdminCheck() {
     clearAdminMarkers();
     clearBoundaryLayers();
     clearHighlights();
-    document.getElementById('adminResult').innerHTML = '';
-    document.getElementById('adminBtn').textContent = t('btn_admin_start');
-    document.getElementById('adminBtn').classList.remove('meas-active');
+    const result = document.getElementById('adminResult');
+    if (result) result.innerHTML = '';
+    const btn = document.getElementById('adminBtn');
+    if (btn) {
+        btn.textContent = t('btn_admin_start');
+        btn.classList.remove('meas-active');
+    }
     setStatus(t('status_ready'), '');
 }
 

@@ -55,9 +55,13 @@ function clearNearestPOI() {
         map.removeLayer(npMarker);
         npMarker = null;
     }
-    document.getElementById('npResult').innerHTML = '';
-    document.getElementById('npBtn').textContent = t('btn_np_start');
-    document.getElementById('npBtn').classList.remove('meas-active');
+    const result = document.getElementById('npResult');
+    if (result) result.innerHTML = '';
+    const btn = document.getElementById('npBtn');
+    if (btn) {
+        btn.textContent = t('btn_np_start');
+        btn.classList.remove('meas-active');
+    }
     setStatus(t('status_ready'), '');
 }
 

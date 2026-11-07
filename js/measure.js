@@ -121,9 +121,13 @@ function toggleMeasure() {
 function clearMeasure() {
     measMode = null;
     clearMeasLayers();
-    document.getElementById('measResult').textContent = '';
-    document.getElementById('measBtn').textContent = t('btn_measure_start');
-    document.getElementById('measBtn').classList.remove('meas-active');
+    const result = document.getElementById('measResult');
+    if (result) result.textContent = '';
+    const btn = document.getElementById('measBtn');
+    if (btn) {
+        btn.textContent = t('btn_measure_start');
+        btn.classList.remove('meas-active');
+    }
     setStatus(t('status_ready'), '');
 }
 
