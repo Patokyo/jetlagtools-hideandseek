@@ -31,8 +31,6 @@ function setUnits(u) {
     units = u;
     document.getElementById('unitKm').className = u === 'metric' ? '' : 'ghost';
     document.getElementById('unitMi').className = u === 'imperial' ? '' : 'ghost';
-    document.getElementById('unitLabelRadius').textContent = tf('lbl_radius', unitStr());
-    document.getElementById('unitLabelStep').textContent = tf('lbl_step', unitStr());
 }
 
 // ── City search via Nominatim ─────────────────────────────────────────────────

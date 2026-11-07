@@ -306,8 +306,13 @@ const AUTOSAVE_DB = 'hideandseek-map';
 const AUTOSAVE_STORE = 'state';
 const AUTOSAVE_KEY = 'last';
 const AUTOSAVE_INTERVAL_MS = 60000;
+// User actions and finished operations save shortly after they happen: an
+// IndexedDB write started from pagehide is often dropped by the browser, so
+// waiting for the unload is not enough to survive a refresh.
+const AUTOSAVE_DEBOUNCE_MS = 500;
 
 let _autosaveTimer = null;
+let _autosaveDebounceTimer = null;
 let _autosaveStarted = false;
 let _autosaveSuppressed = false;
 
@@ -389,6 +394,15 @@ function saveStateNow() {
     _autosaveWrite(state).catch(() => {});
 }
 
+function scheduleAutosave() {
+    if (!_autosaveStarted || _autosaveSuppressed) return;
+    clearTimeout(_autosaveDebounceTimer);
+    _autosaveDebounceTimer = setTimeout(() => {
+        _autosaveDebounceTimer = null;
+        saveStateNow();
+    }, AUTOSAVE_DEBOUNCE_MS);
+}
+
 function startAutosave() {
     if (_autosaveStarted) return;
     _autosaveStarted = true;
@@ -396,6 +410,12 @@ function startAutosave() {
     _autosaveTimer = setInterval(() => {
         if (document.visibilityState === 'visible') saveStateNow();
     }, AUTOSAVE_INTERVAL_MS);
+
+    // Any edit, pick, drag or toggle goes through one of these, so mirror the
+    // state while the page is still alive instead of only on the way out.
+    ['pointerup', 'change', 'input', 'keyup', 'drop', 'dragend'].forEach((ev) =>
+        document.addEventListener(ev, scheduleAutosave, { passive: true }),
+    );
 
     // The page is about to be frozen or unloaded — the usual "user closed the
     // app on their phone" moment.
@@ -419,6 +439,8 @@ function startAutosave() {
 
 function clearAutoSave() {
     _autosaveSuppressed = true;
+    clearTimeout(_autosaveDebounceTimer);
+    _autosaveDebounceTimer = null;
     _autosaveDelete().catch(() => {});
 }
 
@@ -440,6 +462,27 @@ function _autosaveReadWithTimeout(ms) {
         _autosaveRead().catch(() => null),
         new Promise((resolve) => setTimeout(() => resolve(null), ms)),
     ]);
+}
+
+// Restored POI layers stay cached but are not drawn: a reload should not cover
+// the map (and the open questions) with every saved overlay.
+function hideRestoredLayers() {
+    const ids = Object.keys(activeLayers);
+    if (!ids.length) return;
+
+    ids.forEach((id) => activeLayers[id].forEach((l) => map.removeLayer(l)));
+
+    if (mapSetupComplete) {
+        // In game mode an unticked layer is removed rather than hidden, so the
+        // panel starts with nothing ticked while the data stays in the cache.
+        ids.forEach(removeLayer);
+    } else {
+        ids.forEach((id) => hiddenLayers.add(id));
+    }
+
+    renderSetupPoiLayerList();
+    renderGamePoiLayerPanel();
+    updateLayerFabBadge();
 }
 
 // Called once on page load (index.html initialisation).
@@ -467,6 +510,8 @@ async function restoreSavedState() {
                 renderGamePoiLayerPanel();
                 updateLayerFabBadge();
             }
+
+            hideRestoredLayers();
 
             setStatus(t('status_restored') || 'Session restored', 'ok');
             startAutosave();

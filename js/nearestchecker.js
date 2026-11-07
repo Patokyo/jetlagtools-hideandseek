@@ -174,11 +174,15 @@ function clearNearestChecker() {
     ncMarkers = [];
 
     ['A', 'B'].forEach((w) => {
-        document.getElementById('ncLat' + w).value = '';
-        document.getElementById('ncLng' + w).value = '';
-        document.getElementById('ncPick' + w).classList.remove('meas-active');
+        const lat = document.getElementById('ncLat' + w);
+        const lng = document.getElementById('ncLng' + w);
+        const pick = document.getElementById('ncPick' + w);
+        if (lat) lat.value = '';
+        if (lng) lng.value = '';
+        if (pick) pick.classList.remove('meas-active');
     });
-    document.getElementById('ncResult').innerHTML = '';
+    const result = document.getElementById('ncResult');
+    if (result) result.innerHTML = '';
     setStatus(t('status_ready'), '');
 }
 
