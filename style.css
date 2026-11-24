@@ -1606,6 +1606,13 @@ button.meas-active:hover {
         margin-top: 64px;
     }
 
+    /* The on-screen keyboard shrinks the visual viewport while the sidebar
+       keeps its full height, so the pinned changelog is panned up over the
+       form controls. Hide it until the keyboard is dismissed. */
+    body.keyboard-open .cl-section {
+        display: none;
+    }
+
     /* Mobile status toast: mirrors #status next to the menu button */
     #statusToast.show {
         display: flex;

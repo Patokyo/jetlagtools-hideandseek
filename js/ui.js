@@ -229,6 +229,35 @@ function closeSidebarForPick() {
     if (window.matchMedia('(max-width: 700px)').matches) closeSidebar();
 }
 
+// Hide the pinned changelog while the on-screen keyboard is open. The visual
+// viewport shrinks with the keyboard, but the fixed sidebar keeps its height,
+// so the changelog would otherwise be pushed up over the focused field.
+function initMobileKeyboardLayout() {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    let baselineHeight = viewport.height;
+    let wasPortrait = window.innerHeight >= window.innerWidth;
+
+    const update = () => {
+        const isPortrait = window.innerHeight >= window.innerWidth;
+        if (isPortrait !== wasPortrait) {
+            wasPortrait = isPortrait;
+            baselineHeight = viewport.height;
+        }
+        const isMobile = window.matchMedia('(max-width: 700px)').matches;
+        const keyboardOpen =
+            isMobile && viewport.scale <= 1.01 && baselineHeight - viewport.height > 120;
+        document.body.classList.toggle('keyboard-open', keyboardOpen);
+    };
+
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    update();
+}
+
+initMobileKeyboardLayout();
+
 // ── Error popup ───────────────────────────────────────────────────────────────
 function showErrorPopup(msg) {
     document.getElementById('errorText').textContent = msg;
