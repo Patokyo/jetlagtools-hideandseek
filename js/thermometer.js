@@ -13,17 +13,6 @@ let _thermPickingStage = 'A'; // 'A' or 'B'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function _thermGetWorldRect() {
-    // A large enough rectangle to cover the playable map area
-    return turf.polygon([[
-        [-180, -89.9],
-        [180, -89.9],
-        [180, 89.9],
-        [-180, 89.9],
-        [-180, -89.9]
-    ]]);
-}
-
 function _thermRemoveGuideLayers(q, opts = {}) {
     // opts.preserveCircle: if true, do not remove L.Circle guide layers (the radius circle)
     const preserveCircle = !!opts.preserveCircle;
@@ -49,82 +38,212 @@ function _thermRemoveGuideLayers(q, opts = {}) {
     }
 }
 
-/**
- * Creates a half-plane polygon.
- * A and B are [lng, lat].
- * If invert=false, returns polygon containing B (closer to B).
- * If invert=true, returns polygon containing A (closer to A).
- */
-function _thermCreateHalfPlane(A, B, invert = false) {
-    const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-    const dx = B[0] - A[0];
-    const dy = B[1] - A[1];
+// ── Bisector geometry ─────────────────────────────────────────────────────────
+// The hider answers by comparing haversine distances, so the boundary has to be
+// the true spherical bisector: the great circle of points equidistant from A
+// and B. Building it in lat/lng degrees tilts the line (a degree of longitude
+// is shorter than a degree of latitude), which puts points near the line on
+// the wrong side. Line and mask are sampled from this same curve.
+const _THERM_R_KM = 6371.0088;
+const _THERM_DEG = Math.PI / 180;
 
-    // Perpendicular vector
-    const px = -dy;
-    const py = dx;
-
-    // We create a very large polygon that acts as a half-plane.
-    // Start at midpoint, go far along perpendicular, then far along the line, then far back.
-    const scale = 1000; // degrees
-    const p1 = [mid[0] + px * scale, mid[1] + py * scale];
-    const p2 = [mid[0] + px * scale + dx * scale, mid[1] + py * scale + dy * scale];
-    const p3 = [mid[0] + dx * scale, mid[1] + dy * scale];
-    const p4 = [mid[0] - px * scale - dx * scale, mid[1] - py * scale - dy * scale];
-    const p5 = [mid[0] - px * scale, mid[1] - py * scale];
-
-    // This is complex. Easier way:
-    // Use the world rect and turf.intersect with a massive polygon that approximates the half-plane.
-    const world = _thermGetWorldRect();
-
-    // Construct a polygon that covers the side of the line.
-    // We use the points A and B to define the line.
-    // A half plane can be defined by 3 points: Mid, Mid + Perp, Mid + Perp + (B-A)*Large
-    const halfPlane = turf.polygon([[
-        mid,
-        [mid[0] + px * scale, mid[1] + py * scale],
-        [mid[0] + px * scale + dx * scale, mid[1] + py * scale + dy * scale],
-        [B[0] + dx * scale, B[1] + dy * scale],
-        [mid[0] + dx * scale, mid[1] + dy * scale],
-        [mid[0] - px * scale, mid[1] - py * scale],
-        mid
-    ]]);
-    // This is still a bit shaky. Let's use a simpler approach:
-    // Since we only need it for occlusion, we can use a very large polygon
-    // that definitely covers the intended side.
+function _thermV3(lat, lng) {
+    const phi = lat * _THERM_DEG;
+    const lambda = lng * _THERM_DEG;
+    return {
+        x: Math.cos(phi) * Math.cos(lambda),
+        y: Math.cos(phi) * Math.sin(lambda),
+        z: Math.sin(phi),
+    };
 }
 
-// Corrected half-plane:
-function _thermCreateHalfPlaneFixed(A, B, invert = false) {
-    const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-    const dx = B[0] - A[0];
-    const dy = B[1] - A[1];
-    const px = -dy;
-    const py = dx;
-    const scale = 1000;
+function _thermVecToLatLng(v) {
+    return {
+        lat: Math.asin(Math.max(-1, Math.min(1, v.z))) / _THERM_DEG,
+        lng: Math.atan2(v.y, v.x) / _THERM_DEG,
+    };
+}
 
-    // Points for the half-plane containing B
-    const points = [
-        [mid[0], mid[1]],
-        [mid[0] + px * scale, mid[1] + py * scale],
-        [mid[0] + px * scale + dx * scale, mid[1] + py * scale + dy * scale],
-        [mid[0] + dx * scale, mid[1] + dy * scale],
-        [mid[0] - px * scale, mid[1] - py * scale],
-        [mid[0], mid[1]]
-    ];
+// Same longitude but unwrapped near refLng, so long polylines do not jump
+// across the antimeridian.
+function _thermVecToLatLngNear(v, refLng) {
+    const p = _thermVecToLatLng(v);
+    p.lng = refLng + ((((p.lng - refLng) % 360) + 540) % 360) - 180;
+    return p;
+}
 
-    // This is still not quite a half-plane.
-    // a real half-plane is just a polygon with 3 points at infinity.
-    // Let's use the world rectangle and turf.intersect with a huge polygon.
-    const bigPoly = turf.polygon([[
-        [mid[0] - px * scale, mid[1] - py * scale],
-        [mid[0] + px * scale, mid[1] + py * scale],
-        [mid[0] + px * scale + dx * scale, mid[1] + py * scale + dy * scale],
-        [mid[0] - px * scale + dx * scale, mid[1] - py * scale + dy * scale],
-        [mid[0] - px * scale, mid[1] - py * scale]
-    ]]);
-    // Wait, if we just want to shade one side of the line, we can use L.polygon
-    // with a very large area.
+// n: unit normal pointing to the B side; m: unit vector of the midpoint;
+// u: unit tangent along the bisector at the midpoint. Every point
+// m*cos(t) + u*sin(t) is exactly equidistant from A and B.
+function _thermBisector(q) {
+    if (q.lat === null || q.lng === null || q.latB === null || q.lngB === null) return null;
+
+    const a = _thermV3(q.lat, q.lng);
+    const b = _thermV3(q.latB, q.lngB);
+
+    let nx = b.x - a.x;
+    let ny = b.y - a.y;
+    let nz = b.z - a.z;
+    const nLen = Math.hypot(nx, ny, nz);
+    if (!Number.isFinite(nLen) || nLen < 1e-12) return null;
+    nx /= nLen;
+    ny /= nLen;
+    nz /= nLen;
+
+    let mx = a.x + b.x;
+    let my = a.y + b.y;
+    let mz = a.z + b.z;
+    const mLen = Math.hypot(mx, my, mz);
+    if (!Number.isFinite(mLen) || mLen < 1e-12) return null;
+    mx /= mLen;
+    my /= mLen;
+    mz /= mLen;
+
+    let ux = ny * mz - nz * my;
+    let uy = nz * mx - nx * mz;
+    let uz = nx * my - ny * mx;
+    const uLen = Math.hypot(ux, uy, uz);
+    if (!Number.isFinite(uLen) || uLen < 1e-12) return null;
+    ux /= uLen;
+    uy /= uLen;
+    uz /= uLen;
+
+    const mid = _thermVecToLatLng({ x: mx, y: my, z: mz });
+    return {
+        midLat: mid.lat,
+        midLng: mid.lng,
+        n: { x: nx, y: ny, z: nz },
+        m: { x: mx, y: my, z: mz },
+        u: { x: ux, y: uy, z: uz },
+    };
+}
+
+function _thermBisectorVec(bis, t) {
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    return {
+        x: bis.m.x * c + bis.u.x * s,
+        y: bis.m.y * c + bis.u.y * s,
+        z: bis.m.z * c + bis.u.z * s,
+    };
+}
+
+// Distance in km from the midpoint that comfortably covers the game zone or,
+// without a zone, the current view.
+function _thermCoverageSpanKm(midLat, midLng) {
+    let maxKm = 0;
+    const consider = (lat, lng) => {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        maxKm = Math.max(maxKm, haversineKm({ lat: midLat, lng: midLng }, { lat, lng }));
+    };
+
+    try {
+        if (gameZoneActive() && typeof gzItems !== 'undefined') {
+            const feats = Object.values(gzItems)
+                .map((i) => i.feature)
+                .filter(Boolean);
+            if (feats.length) {
+                const [minLng, minLat, maxLng, maxLat] = turf.bbox(turf.featureCollection(feats));
+                consider(minLat, minLng);
+                consider(minLat, maxLng);
+                consider(maxLat, minLng);
+                consider(maxLat, maxLng);
+            }
+        }
+    } catch (e) {
+        // Fall back to the visible map bounds.
+    }
+
+    if (maxKm === 0) {
+        const b = map.getBounds();
+        consider(b.getNorth(), b.getWest());
+        consider(b.getNorth(), b.getEast());
+        consider(b.getSouth(), b.getWest());
+        consider(b.getSouth(), b.getEast());
+    }
+
+    return Math.max(maxKm * 2, 50);
+}
+
+// Half-length of the drawn bisector, as an angle on the sphere.
+function _thermBisectorSpan(bis) {
+    const km = _thermCoverageSpanKm(bis.midLat, bis.midLng);
+    return Math.min(km / _THERM_R_KM, (85 * Math.PI) / 180);
+}
+
+function _thermBisectorSampleCount(tMax) {
+    return Math.min(256, Math.max(64, Math.ceil((2 * tMax) / (0.25 * _THERM_DEG))));
+}
+
+function _thermBisectorLine(bis, tMax) {
+    const count = _thermBisectorSampleCount(tMax);
+    const pts = [];
+    for (let i = 0; i <= count; i++) {
+        const t = -tMax + (2 * tMax * i) / count;
+        const p = _thermVecToLatLngNear(_thermBisectorVec(bis, t), bis.midLng);
+        pts.push([p.lat, p.lng]);
+    }
+    return pts;
+}
+
+// Polygon on the B side of the bisector. Its long edge is exactly the sampled
+// bisector, so the shaded boundary matches the dashed line.
+function _thermMaskRing(bis, tMax) {
+    const ring = _thermBisectorLine(bis, tMax).map(([lat, lng]) => [lng, lat]);
+    const c = Math.cos(tMax);
+    const s = Math.sin(tMax);
+    const farEnd = (t) => {
+        const p = _thermBisectorVec(bis, t);
+        const v = {
+            x: p.x * c + bis.n.x * s,
+            y: p.y * c + bis.n.y * s,
+            z: p.z * c + bis.n.z * s,
+        };
+        const ll = _thermVecToLatLngNear(v, bis.midLng);
+        return [ll.lng, ll.lat];
+    };
+    ring.push(farEnd(tMax));
+    ring.push(farEnd(-tMax));
+    ring.push(ring[0]);
+    return ring;
+}
+
+// Initial bearing from a to b, in radians.
+function _thermBearing(a, b) {
+    const phi1 = a.lat * _THERM_DEG;
+    const phi2 = b.lat * _THERM_DEG;
+    const dLng = (b.lng - a.lng) * _THERM_DEG;
+    const y = Math.sin(dLng) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
+    return Math.atan2(y, x);
+}
+
+function _thermDestination(a, bearing, km) {
+    const delta = km / _THERM_R_KM;
+    const phi1 = a.lat * _THERM_DEG;
+    const lambda1 = a.lng * _THERM_DEG;
+    const sinPhi2 =
+        Math.sin(phi1) * Math.cos(delta) +
+        Math.cos(phi1) * Math.sin(delta) * Math.cos(bearing);
+    const phi2 = Math.asin(Math.max(-1, Math.min(1, sinPhi2)));
+    const lambda2 =
+        lambda1 +
+        Math.atan2(
+            Math.sin(bearing) * Math.sin(delta) * Math.cos(phi1),
+            Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2),
+        );
+    return { lat: phi2 / _THERM_DEG, lng: lambda2 / _THERM_DEG };
+}
+
+// Place B exactly q.dist km from A along the bearing A -> clicked point.
+function _thermSetPointB(q, lat, lng) {
+    if (q.lat === null || q.lng === null) return;
+    const a = { lat: q.lat, lng: q.lng };
+    const target = { lat, lng };
+    if (haversineKm(a, target) < 1e-6) return;
+    const b = _thermDestination(a, _thermBearing(a, target), q.dist);
+    q.latB = b.lat;
+    q.lngB = b.lng;
 }
 
 // ── Redraw the guide (Circle + Bisector) ──────────────────────────────────────
@@ -149,33 +268,24 @@ function _thermDrawGuide(id) {
         q.markerA = createDraggableMarker([q.lat, q.lng]).addTo(map);
         q.layers.push(q.markerA);
 
-        q.markerA.on('drag', (e) => {
-            const pos = getMarkerPosition(e.target);
+        q.markerA.on('drag', (e) => {                const pos = getMarkerPosition(e.target);
 
-            // If B exists, preserve its bearing relative to the old center and keep distance = q.dist
-            if (q.latB !== null) {
-                const oldLat = q.lat;
-                const oldLng = q.lng;
-                const angle = Math.atan2(q.latB - oldLat, q.lngB - oldLng);
-                const distDeg = q.dist / 111;
+            // Keep B on the circle around the moved A, at the same bearing.
+            const bearing =
+                q.latB !== null
+                    ? _thermBearing(
+                          { lat: q.lat, lng: q.lng },
+                          { lat: q.latB, lng: q.lngB },
+                      )
+                    : Math.PI / 4;
 
-                q.lat = pos.lat;
-                q.lng = pos.lng;
+            q.lat = pos.lat;
+            q.lng = pos.lng;
 
-                q.latB = q.lat + distDeg * Math.cos(angle);
-                q.lngB = q.lng + (distDeg * Math.sin(angle)) / Math.cos(q.lat * Math.PI / 180);
-
-                if (q.markerB) q.markerB.setLatLng([q.latB, q.lngB]);
-            } else {
-                // No B yet: just move A and initialize B at 45° as before
-                q.lat = pos.lat;
-                q.lng = pos.lng;
-                const distDeg = q.dist / 111;
-                const angle = Math.PI / 4;
-                q.latB = q.lat + distDeg * Math.cos(angle);
-                q.lngB = q.lng + (distDeg * Math.sin(angle)) / Math.cos(q.lat * Math.PI / 180);
-                if (q.markerB) q.markerB.setLatLng([q.latB, q.lngB]);
-            }
+            const movedB = _thermDestination({ lat: q.lat, lng: q.lng }, bearing, q.dist);
+            q.latB = movedB.lat;
+            q.lngB = movedB.lng;
+            if (q.markerB) q.markerB.setLatLng([q.latB, q.lngB]);
 
                 _thermUpdateGuideElements(id);
                 _thermDrawOcclusion(id);
@@ -273,32 +383,13 @@ function _thermUpdateGuideElements(id) {
         q.layers.push(circle);
     }
 
-    // Mirror logic from _thermDrawOcclusion exactly
-    const lngA = q.lng;
-    const latA = q.lat;
-    const lngB = q.lngB;
-    const latB = q.latB;
-
-    const midLng = (lngA + lngB) / 2;
-    const midLat = (latA + latB) / 2;
-
-    const dx = lngB - lngA;
-    const dy = latB - latA;
-    const px = -dy;
-    const py = dx;
-
-    const len = Math.sqrt(px * px + py * py);
-    const uPx = len !== 0 ? px / len : 0;
-    const uPy = len !== 0 ? py / len : 0;
-
-    const scale = 0.5; // Sufficient to cover game zone without projection artifacts
-
-    const p1 = [midLat + uPy * scale, midLng + uPx * scale];
-    const p2 = [midLat - uPy * scale, midLng - uPx * scale];
+    const bis = _thermBisector(q);
+    if (!bis) return;
+    const tMax = _thermBisectorSpan(bis);
 
     // Only draw the bisector line when not actively dragging
     if (!q._thermIsDragging) {
-        const line = L.polyline([p1, p2], {
+        const line = L.polyline(_thermBisectorLine(bis, tMax), {
             color: '#8b949e',
             weight: 2,
             dashArray: '4 4',
@@ -328,34 +419,9 @@ function _thermDrawOcclusion(id) {
         q.maskLayer = null;
     }
 
-    // Use a robust planar approximation for the occlusion wedge.
-    // Since this is clipped to the Game Zone (which is local), the planar
-    // approximation is visually identical to the spherical one and avoids
-    // the GeoJSON "world-wrap" glitches caused by sampling great circles.
-    const A = [q.lng, q.lat];
-    const B = [q.lngB, q.latB];
-    const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-
-    const dx = B[0] - A[0];
-    const dy = B[1] - A[1];
-    const px = -dy;
-    const py = dx;
-
-    // Scale large enough to cover any reasonable game zone,
-    // but not so large that it causes floating point issues.
-    const scale = 1000;
-
-    // Create a huge rectangle that covers the B-side of the bisector.
-    // Points are ordered to ensure a consistent counter-clockwise winding.
-    const polygonPts = [
-        [mid[0] + px * scale, mid[1] + py * scale],                      // P1: on bisector
-        [mid[0] + px * scale + dx * scale * 10, mid[1] + py * scale + dy * scale * 10], // P2: far B-side
-        [mid[0] - px * scale + dx * scale * 10, mid[1] - py * scale + dy * scale * 10], // P3: far B-side
-        [mid[0] - px * scale, mid[1] - py * scale],                      // P4: on bisector
-        [mid[0] + px * scale, mid[1] + py * scale]                       // Close
-    ];
-
-    let wedgeB = turf.polygon([polygonPts]);
+    const bis = _thermBisector(q);
+    if (!bis) return;
+    let wedgeB = turf.polygon([_thermMaskRing(bis, _thermBisectorSpan(bis))]);
 
     // Clip to Game Area if active to ensure we only shade the playable region
     if (gameZoneActive()) {
@@ -477,12 +543,7 @@ function thermUseGeo(id) {
     if (_thermPickingStage === 'A') {
         _thermSetPointA(q, c.lat, c.lng, id);
     } else {
-        // Snap to circle
-        const dist = haversineKm([c.lat, c.lng], [q.lat, q.lng]);
-        const angle = Math.atan2(c.lng - q.lng, c.lat - q.lat);
-        // This is a rough approximation for snapping
-        q.latB = c.lat;
-        q.lngB = c.lng;
+        _thermSetPointB(q, c.lat, c.lng);
     }
     _thermRenderCards();
     _thermDrawGuide(id);
@@ -527,11 +588,10 @@ function _thermSetPointA(q, lat, lng, id) {
     q.lat = lat;
     q.lng = lng;
 
-    // Automatically initialize Point B at a 45-degree angle from Point A
-    const distDeg = q.dist / 111;
-    const angle = Math.PI / 4; // 45 degrees
-    q.latB = lat + distDeg * Math.cos(angle);
-    q.lngB = lng + (distDeg * Math.sin(angle)) / Math.cos(lat * Math.PI / 180);
+    // Automatically initialize Point B at a 45-degree angle from Point A.
+    const b = _thermDestination({ lat, lng }, Math.PI / 4, q.dist);
+    q.latB = b.lat;
+    q.lngB = b.lng;
 
     _thermRenderCards();
     _thermDrawGuide(id);
@@ -549,19 +609,8 @@ addMapClickHook((e) => {
     if (_thermPickingStage === 'A') {
         _thermSetPointA(q, e.latlng.lat, e.latlng.lng, id);
     } else {
-        // Snap to circle of radius q.dist
-        const center = [q.lng, q.lat];
-        const clicked = [e.latlng.lng, e.latlng.lat];
-        const dx = clicked[0] - center[0];
-        const dy = clicked[1] - center[1];
-        const currentDist = Math.sqrt(dx * dx + dy * dy);
-
-        // Roughly convert q.dist (km) to degrees (1 deg approx 111km)
-        const targetDistDeg = q.dist / 111;
-        const scale = targetDistDeg / currentDist;
-
-        q.lngB = center[0] + dx * scale;
-        q.latB = center[1] + dy * scale;
+        // Snap to the circle of radius q.dist, measured on the ground.
+        _thermSetPointB(q, e.latlng.lat, e.latlng.lng);
     }
 
     _thermRenderCards();
