@@ -4,6 +4,7 @@ let _hiderSelectedLayer = null;
 let _hiderRefPoint = null; // {lat, lng}
 let _hiderMarker = null;
 let _hiderZoneLayer = null;
+let _hiderZoneData = null; // { lat, lng, radiusKm } — kept so the zone can be auto-saved
 let _hiderStations = []; // [{ idx, name }] sorted alphabetically
 let _hiderSelectedIdx = null; // index into layerDataCache.stations.elements
 let _hiderHighlight = -1; // keyboard-highlighted row in the dropdown
@@ -289,41 +290,94 @@ function hiderCreateZone() {
         return;
     }
 
-    // Remove existing zone if present
-    if (_hiderZoneLayer) {
-        map.removeLayer(_hiderZoneLayer);
-    }
-
-    // Turf.js uses [lng, lat] for points
-    const geometry = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers' });
-
-    // "block out everything BUT the hiding zone" means invert = true
-    const occlusionLayer = createOcclusionLayer(geometry, { invert: true });
-
-    if (occlusionLayer) {
-        _hiderZoneLayer = occlusionLayer;
-        _hiderZoneLayer.addTo(map);
-
-        // Zoom to the zone itself — the inverted mask's own bounds cover the world
-        const [minLng, minLat, maxLng, maxLat] = turf.bbox(geometry);
-        map.fitBounds(
-            L.latLngBounds([[minLat, minLng], [maxLat, maxLng]]).pad(0.15),
-            { maxZoom: 17 }
-        );
-
+    if (hiderDrawZone(center.lat, center.lng, radiusKm, true)) {
         setStatus(`Hiding zone created around ${esc(el.name || 'Station')}`, 'ok');
     } else {
         setStatus('Failed to create hiding zone', 'error');
     }
 }
 
+// Draws the inverted "hiding zone" mask around a point. `fit` zooms to the
+// zone; restoring a saved zone leaves the restored map view alone.
+function hiderDrawZone(lat, lng, radiusKm, fit) {
+    if (_hiderZoneLayer) {
+        map.removeLayer(_hiderZoneLayer);
+        _hiderZoneLayer = null;
+    }
+
+    // Turf.js uses [lng, lat] for points
+    const geometry = turf.circle([lng, lat], radiusKm, { units: 'kilometers' });
+
+    // "block out everything BUT the hiding zone" means invert = true
+    const occlusionLayer = createOcclusionLayer(geometry, { invert: true });
+    if (!occlusionLayer) return false;
+
+    _hiderZoneLayer = occlusionLayer;
+    _hiderZoneData = { lat, lng, radiusKm };
+    _hiderZoneLayer.addTo(map);
+
+    if (fit) {
+        // Zoom to the zone itself — the inverted mask's own bounds cover the world
+        const [minLng, minLat, maxLng, maxLat] = turf.bbox(geometry);
+        map.fitBounds(
+            L.latLngBounds([[minLat, minLng], [maxLat, maxLng]]).pad(0.15),
+            { maxZoom: 17 }
+        );
+    }
+    return true;
+}
+
 function hiderClearZone() {
     if (_hiderZoneLayer) {
         map.removeLayer(_hiderZoneLayer);
         _hiderZoneLayer = null;
+        _hiderZoneData = null;
         setStatus('Hiding zone removed', 'ok');
     } else {
         setStatus('No hiding zone to remove', 'error');
+    }
+}
+
+// ── Hider tool state for the local auto-save ────────────────────────────────
+// Only the zone's centre/radius (not the station index) is stored, so it can be
+// redrawn even if the stations layer is not cached. The nearest-POI check keeps
+// its picked layer and reference point; its result is recomputed on restore.
+function hiderExportState() {
+    const radiusInput = document.getElementById('hider-zone-radius');
+    return {
+        radiusKm: radiusInput ? parseFloat(radiusInput.value) : null,
+        zone: _hiderZoneData ? { ..._hiderZoneData } : null,
+        nearest: {
+            layerId: document.getElementById('hider-layer-select')?.value || '',
+            refPoint: _hiderRefPoint ? { lat: _hiderRefPoint.lat, lng: _hiderRefPoint.lng } : null,
+        },
+    };
+}
+
+function hiderImportState(state) {
+    if (!state) return;
+
+    const radiusInput = document.getElementById('hider-zone-radius');
+    if (radiusInput && Number.isFinite(state.radiusKm)) {
+        radiusInput.value = String(state.radiusKm);
+    }
+
+    const zone = state.zone;
+    if (zone && Number.isFinite(zone.lat) && Number.isFinite(zone.lng) && zone.radiusKm > 0) {
+        hiderDrawZone(zone.lat, zone.lng, zone.radiusKm, false);
+    }
+
+    const select = document.getElementById('hider-layer-select');
+    const nearest = state.nearest ?? {};
+    if (select && nearest.layerId) {
+        // The option only exists when the layer data was restored from the cache
+        const known = [...select.options].some(o => o.value === nearest.layerId);
+        if (known) select.value = nearest.layerId;
+    }
+
+    const p = nearest.refPoint;
+    if (p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
+        hiderSetPoint(p.lat, p.lng);
     }
 }
 

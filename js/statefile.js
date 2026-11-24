@@ -377,6 +377,8 @@ function buildAutoSaveState() {
         ...buildGameState(),
         mapSetupComplete: !!mapSetupComplete,
         prefs: { units, style: _currentTileKey() },
+        // Hider tools (hiding zone + nearest-POI check); defined in hidertools.js
+        hider: typeof hiderExportState === 'function' ? hiderExportState() : null,
         savedAt: Date.now(),
     };
 }
@@ -510,6 +512,9 @@ async function restoreSavedState() {
                 renderGamePoiLayerPanel();
                 updateLayerFabBadge();
             }
+
+            // Redraw the hider tools (zone, nearest-POI pick) from the saved state
+            if (typeof hiderImportState === 'function') hiderImportState(saved.hider);
 
             hideRestoredLayers();
 
