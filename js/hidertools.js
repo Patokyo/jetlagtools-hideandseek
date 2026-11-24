@@ -480,6 +480,7 @@ function hiderAnswerQuestion() {
                 setStatus('Clipboard does not contain a question I can read', 'error');
                 return;
             }
+            hiderAnswerCancel();
             _hiderAnswerQuestion = q;
             _hiderAnswerPoint = null;
             _hiderAnswerResult = null;
@@ -622,14 +623,11 @@ function hiderAnswerAt(lat, lng) {
 
     if (_hiderAnswerMarker) map.removeLayer(_hiderAnswerMarker);
     const color = _hiderToneColor(_hiderAnswerResult.tone);
-    _hiderAnswerMarker = L.circleMarker([lat, lng], {
-        radius: 7,
-        color,
-        fillColor: color,
-        fillOpacity: 1,
-        weight: 2,
-        interactive: false,
-    }).addTo(map);
+    _hiderAnswerMarker = createDraggableMarker([lat, lng], color).addTo(map);
+    _hiderAnswerMarker.on('dragend', (e) => {
+        const p = getMarkerPosition(e.target);
+        hiderAnswerAt(p.lat, p.lng);
+    });
 
     hiderRenderAnswerPanel();
     setStatus(`Answer: ${_hiderAnswerResult.answer}`, 'ok');
@@ -651,6 +649,102 @@ function hiderAnswerCancel() {
     setStatus('');
 }
 
+function hiderClearCurrentAnswer() {
+    hiderAnswerCancel();
+    setStatus('Question cleared', 'ok');
+}
+
+// Add the answered question to the corresponding seeker tool as a confirmed
+// question, so it appears in that tool's list and affects its map overlay.
+async function hiderAddAnsweredQuestion() {
+    const q = _hiderAnswerQuestion;
+    const point = _hiderAnswerPoint;
+    const result = _hiderAnswerResult;
+    if (!q || !point || !result) {
+        setStatus('Choose your location first', 'error');
+        return;
+    }
+
+    let id = null;
+    try {
+        if (q.type === 'radar') {
+            id = rqAddAnsweredQuestion({
+                km: q.km,
+                lat: q.lat,
+                lng: q.lng,
+                answer: result.answer,
+            });
+        } else if (q.type === 'matching') {
+            id = await mqAddAnsweredQuestion({
+                layerId: q.layerId,
+                lat: point.lat,
+                lng: point.lng,
+                answerYes: result.answer === 'YES',
+            });
+        } else if (q.type === 'measuring') {
+            id = await measAddAnsweredQuestion({
+                layerId: q.layerId,
+                km: q.km,
+                answer: result.answer,
+            });
+        } else if (q.type === 'thermometer') {
+            id = thermAddAnsweredQuestion({
+                lat: q.latA,
+                lng: q.lngA,
+                latB: q.latB,
+                lngB: q.lngB,
+                answer: result.answer,
+            });
+        } else if (q.type === 'tentacles') {
+            id = await tentAddAnsweredQuestion({
+                layerId: q.layerId,
+                radiusKm: q.km,
+                centerLat: q.lat,
+                centerLng: q.lng,
+                answer: result.answer,
+            });
+        }
+    } catch (err) {
+        console.error('Could not add answered question', err);
+        id = null;
+    }
+
+    if (!id) {
+        setStatus('Could not add this question', 'error');
+        return;
+    }
+
+    const answer = result.answer;
+    hiderAnswerCancel();
+    setStatus(`Question added: ${answer}`, 'ok');
+    scheduleAutosave();
+}
+
+function _hiderAnswerDetail(q, r) {
+    let detail = '';
+    if (r.kind === 'matching') {
+        detail = `Your closest ${esc(q.layerLabel)} is ${esc(r.nearestName)}${
+            r.answer === 'YES' ? '.' : `, not ${esc(q.poiName)}.`
+        }`;
+    } else if (r.kind === 'measuring') {
+        detail = `Your closest ${esc(q.layerLabel)} is ${esc(r.nearestName)} (${fmtDist(
+            r.dKm,
+        )} away). The question distance is ${fmtDist(q.km)}.`;
+    } else if (r.kind === 'thermometer') {
+        detail = `You are ${fmtDist(r.dA)} from the start point and ${fmtDist(r.dB)} from the end point.`;
+    } else if (r.kind === 'tentacles') {
+        detail =
+            r.answer === 'NONE'
+                ? `You are ${fmtDist(r.dKm)} from the point – outside the ${fmtDist(q.km)} radius.`
+                : `Your closest ${esc(q.layerLabel)} is ${esc(r.answer)} (${fmtDist(
+                      r.poiKm,
+                  )} away), within the ${fmtDist(q.km)} radius.`;
+    } else {
+        detail = `You are ${fmtDist(r.dKm)} from the radar centre, the radar radius is ${fmtDist(q.km)}.`;
+    }
+    return detail;
+}
+
 function hiderRenderAnswerPanel() {
     const panel = document.getElementById('hider-answer-panel');
     if (!panel) return;
@@ -663,29 +757,7 @@ function hiderRenderAnswerPanel() {
     }
 
     const r = _hiderAnswerResult;
-    let detail = '';
-    if (r) {
-        if (r.kind === 'matching') {
-            detail = `Your closest ${esc(q.layerLabel)} is ${esc(r.nearestName)}${
-                r.answer === 'YES' ? '.' : `, not ${esc(q.poiName)}.`
-            }`;
-        } else if (r.kind === 'measuring') {
-            detail = `Your closest ${esc(q.layerLabel)} is ${esc(r.nearestName)} (${fmtDist(
-                r.dKm,
-            )} away). The question distance is ${fmtDist(q.km)}.`;
-        } else if (r.kind === 'thermometer') {
-            detail = `You are ${fmtDist(r.dA)} from the start point and ${fmtDist(r.dB)} from the end point.`;
-        } else if (r.kind === 'tentacles') {
-            detail =
-                r.answer === 'NONE'
-                    ? `You are ${fmtDist(r.dKm)} from the point – outside the ${fmtDist(q.km)} radius.`
-                    : `Your closest ${esc(q.layerLabel)} is ${esc(r.answer)} (${fmtDist(
-                          r.poiKm,
-                      )} away), within the ${fmtDist(q.km)} radius.`;
-        } else {
-            detail = `You are ${fmtDist(r.dKm)} from the radar centre, the radar radius is ${fmtDist(q.km)}.`;
-        }
-    }
+    const detail = r ? _hiderAnswerDetail(q, r) : '';
     const toneColor = r ? _hiderToneColor(r.tone) : '';
     const toneBg = r?.tone === 'yes' ? '#0f2a17' : r?.tone === 'no' ? '#2a0f0f' : '#0d2238';
     const resultBox = r
@@ -703,9 +775,12 @@ function hiderRenderAnswerPanel() {
         <div class="row" style="gap:6px; margin-bottom:8px">
             <button class="tent-pick-btn" style="flex:1; margin-bottom:0" onclick="hiderAnswerUseGeo()">🎯 Current Loc</button>
             <button class="tent-pick-btn" style="flex:1; margin-bottom:0" onclick="hiderAnswerStartPick()">📍 Pick Location</button>
-            <button class="ghost" onclick="hiderAnswerCancel()" title="Close">✕</button>
         </div>
         ${resultBox}
+        <div class="row" style="gap:6px; margin-top:8px">
+            <button class="tent-pick-btn" style="flex:1; margin-bottom:0" onclick="hiderAddAnsweredQuestion()" ${r ? '' : 'disabled'}>Add question</button>
+            <button class="ghost" style="flex:1" onclick="hiderClearCurrentAnswer()">Clear</button>
+        </div>
     `;
 }
 

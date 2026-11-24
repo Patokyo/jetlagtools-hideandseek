@@ -122,6 +122,7 @@ function clearAllQuestions() {
     clearAllMeasuringQuestions();
     clearAllThermometerQuestions();
     hiderClearZone();
+    hiderAnswerCancel();
     setStatus(t('status_questions_cleared'), 'ok');
     scheduleAutosave();
 }

@@ -374,3 +374,36 @@ async function matchingImportState(list) {
     }
     _mqRenderCards();
 }
+
+// Add a confirmed matching question from a hider's answer.
+async function mqAddAnsweredQuestion({ layerId, lat, lng, answerYes }) {
+    if (!layerId || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (!layerDataCache[layerId]?.elements?.length) return null;
+
+    const id = _matchingNextId++;
+    const q = {
+        id,
+        layerId,
+        lat,
+        lng,
+        answerYes: !!answerYes,
+        maskLayer: null,
+        outlines: [],
+        confirmed: false,
+    };
+    _matchingQuestions.push(q);
+    _mqRenderCards();
+
+    try {
+        await mqRun(id);
+    } catch (err) {
+        mqRemoveQuestion(id);
+        return null;
+    }
+    if (!q.maskLayer) {
+        mqRemoveQuestion(id);
+        return null;
+    }
+    mqConfirm(id);
+    return id;
+}

@@ -71,6 +71,7 @@ function addMeasuringQuestion() {
         lat: null,
         lng: null,
         answer: null, // 'closer' or 'further'
+        distanceKm: null,
         maskLayer: null,
         marker: null,
         confirmed: false
@@ -267,7 +268,6 @@ async function measRun(id) {
     }
     _measClearLayers(q);
     if (!q.layerId) return;
-    if (q.lat === null || q.lng === null) return;
 
     const data = layerDataCache[q.layerId];
     if (!data || !data.elements || data.elements.length === 0) {
@@ -285,27 +285,33 @@ async function measRun(id) {
 
     if (pois.length === 0) return;
 
-    // Find distance to closest POI
-    let minDist = Infinity;
-    pois.forEach((p) => {
-        const d = haversineKm({ lat: q.lat, lng: q.lng }, p);
-        if (d < minDist) minDist = d;
-    });
+    // Questions added from a hider's answer already contain the asked distance;
+    // normal questions derive it from the picked point.
+    let thresholdKm = Number(q.distanceKm) > 0 ? Number(q.distanceKm) : null;
+    if (thresholdKm === null) {
+        if (q.lat === null || q.lng === null) return;
 
-    const distEl = document.getElementById(`meas-dist-${id}`);
-    if (distEl) {
-        const v = units === 'imperial' ? minDist * 0.621371 : minDist;
-        const unit = units === 'imperial' ? 'mi' : 'km';
-        const layerLabel = LAYER_DEFS[q.layerId] ? t(LAYER_DEFS[q.layerId].label) : 'POI';
-        distEl.textContent = `Closest ${layerLabel}: ${v.toFixed(2)} ${unit}`;
+        thresholdKm = Infinity;
+        pois.forEach((p) => {
+            const d = haversineKm({ lat: q.lat, lng: q.lng }, p);
+            if (d < thresholdKm) thresholdKm = d;
+        });
+
+        const distEl = document.getElementById(`meas-dist-${id}`);
+        if (distEl) {
+            const v = units === 'imperial' ? thresholdKm * 0.621371 : thresholdKm;
+            const unit = units === 'imperial' ? 'mi' : 'km';
+            const layerLabel = LAYER_DEFS[q.layerId] ? t(LAYER_DEFS[q.layerId].label) : 'POI';
+            distEl.textContent = `Closest ${layerLabel}: ${v.toFixed(2)} ${unit}`;
+        }
     }
 
-    if (!q.answer) return;
+    if (!Number.isFinite(thresholdKm) || !q.answer) return;
 
-    // Create union of circles of radius minDist
+    // Create union of circles of the question distance
     let unionPoly = null;
     pois.forEach((p) => {
-        const circle = turf.circle([p.lng, p.lat], minDist, { units: 'kilometers' });
+        const circle = turf.circle([p.lng, p.lat], thresholdKm, { units: 'kilometers' });
         if (!unionPoly) {
             unionPoly = circle;
         } else {
@@ -339,6 +345,7 @@ function measuringExportState() {
         lat: q.lat,
         lng: q.lng,
         answer: q.answer,
+        distanceKm: q.distanceKm ?? null,
         confirmed: q.confirmed,
     }));
 }
@@ -355,6 +362,7 @@ async function measuringImportState(list) {
             lat: typeof s.lat === 'number' ? s.lat : null,
             lng: typeof s.lng === 'number' ? s.lng : null,
             answer: s.answer === 'closer' || s.answer === 'further' ? s.answer : null,
+            distanceKm: Number(s.distanceKm) > 0 ? Number(s.distanceKm) : null,
             maskLayer: null,
             marker: null,
             confirmed: false,
@@ -363,8 +371,46 @@ async function measuringImportState(list) {
         _measRenderCards();
 
         const hasLayer = q.layerId && layerDataCache[q.layerId]?.elements?.length;
-        if (hasLayer && q.lat !== null && q.lng !== null) await measRun(id);
+        if (hasLayer && (q.distanceKm || (q.lat !== null && q.lng !== null))) await measRun(id);
         if (s.confirmed) measConfirm(id);
     }
     _measRenderCards();
+}
+
+// Add a confirmed measuring question from a hider's answer. The asked distance
+// is stored directly; the seeker's own location is not part of the question.
+async function measAddAnsweredQuestion({ layerId, km, answer }) {
+    const thresholdKm = Number(km);
+    const normalized = String(answer ?? '').toLowerCase();
+    if (!layerId || !(thresholdKm > 0)) return null;
+    if (normalized !== 'closer' && normalized !== 'further') return null;
+    if (!layerDataCache[layerId]?.elements?.length) return null;
+
+    const id = _measNextId++;
+    const q = {
+        id,
+        layerId,
+        lat: null,
+        lng: null,
+        answer: normalized,
+        distanceKm: thresholdKm,
+        maskLayer: null,
+        marker: null,
+        confirmed: false,
+    };
+    _measQuestions.push(q);
+    _measRenderCards();
+
+    try {
+        await measRun(id);
+    } catch (err) {
+        measRemoveQuestion(id);
+        return null;
+    }
+    if (!q.maskLayer) {
+        measRemoveQuestion(id);
+        return null;
+    }
+    measConfirm(id);
+    return id;
 }

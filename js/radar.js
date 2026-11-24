@@ -347,3 +347,26 @@ function rqImportState(list) {
     _rqRenderCards();
     _rqUpdateOverlay();
 }
+
+// Add a confirmed radar question from a hider's answer.
+function rqAddAnsweredQuestion({ km, lat, lng, answer }) {
+    const radiusKm = Number(km);
+    const normalized = String(answer ?? '').toLowerCase();
+    if (!(radiusKm > 0) || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (normalized !== 'yes' && normalized !== 'no') return null;
+
+    const q = {
+        id: _rqNextId++,
+        km: radiusKm,
+        answer: normalized,
+        lat,
+        lng,
+        layers: [],
+        confirmed: true,
+        handle: null,
+    };
+    _rqQuestions.push(q);
+    _rqRenderCards();
+    _rqUpdateOverlay();
+    return q.id;
+}

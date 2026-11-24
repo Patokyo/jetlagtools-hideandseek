@@ -716,3 +716,32 @@ function thermImportState(list) {
     }
     _thermRenderCards();
 }
+
+// Add a confirmed thermometer question from a hider's answer.
+function thermAddAnsweredQuestion({ lat, lng, latB, lngB, answer }) {
+    const normalized = String(answer ?? '').toLowerCase();
+    if (![lat, lng, latB, lngB].every(Number.isFinite)) return null;
+    if (normalized !== 'hotter' && normalized !== 'colder') return null;
+
+    const dist = haversineKm({ lat, lng }, { lat: latB, lng: lngB });
+    if (!(dist > 0)) return null;
+
+    const q = {
+        id: _thermNextId++,
+        dist,
+        lat,
+        lng,
+        latB,
+        lngB,
+        answer: normalized,
+        layers: [],
+        maskLayer: null,
+        markerA: null,
+        markerB: null,
+        confirmed: true,
+    };
+    _thermQuestions.push(q);
+    _thermDrawOcclusion(q.id);
+    _thermRenderCards();
+    return q.id;
+}

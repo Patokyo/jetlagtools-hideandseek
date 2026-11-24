@@ -81,8 +81,9 @@ async function _tentFetchPOIs(id) {
         // Keep the previous selection when it is still in range; otherwise use
         // the first in-range POI so the Voronoi and marker remain available.
         const previousPOIId = q.selectedPOI?.id;
-        q.selectedPOI =
-            q.fetchedPOIs.find((p) => p.id === previousPOIId) ?? q.fetchedPOIs[0] ?? null;
+        q.selectedPOI = q.noneAnswer
+            ? null
+            : (q.fetchedPOIs.find((p) => p.id === previousPOIId) ?? q.fetchedPOIs[0] ?? null);
 
         if (sel) {
             sel.innerHTML =
@@ -292,6 +293,7 @@ function addTentacleQuestion() {
         layers: [],
         marker: null,
         confirmed: false,
+        noneAnswer: false,
     });
     _tentRenderCards();
 }
@@ -503,6 +505,7 @@ function tentExportState() {
         centerLng: q.centerLng,
         selectedPOIId: q.selectedPOI?.id ?? null,
         confirmed: !!q.confirmed,
+        noneAnswer: !!q.noneAnswer,
     }));
 }
 
@@ -525,6 +528,7 @@ async function tentImportState(list) {
             layers: [],
             marker: null,
             confirmed: !!s.confirmed,
+            noneAnswer: !!s.noneAnswer,
         };
         _tentQuestions.push(q);
         _tentRenderCards();
@@ -535,4 +539,59 @@ async function tentImportState(list) {
         }
     }
     _tentRenderCards();
+}
+
+// Add a confirmed tentacle question from a hider's answer.
+async function tentAddAnsweredQuestion({ layerId, radiusKm, centerLat, centerLng, answer }) {
+    const radius = Number(radiusKm);
+    const wanted = String(answer ?? '').trim().toLowerCase();
+    if (!LAYER_DEFS[layerId] || !(radius > 0)) return null;
+    if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return null;
+    if (!wanted || !layerDataCache[layerId]?.elements?.length) return null;
+
+    const id = _tentNextId++;
+    const q = {
+        id,
+        radius,
+        unit: 'km',
+        poiLayerId: layerId,
+        centerLat,
+        centerLng,
+        selectedPOI: null,
+        fetchedPOIs: [],
+        layers: [],
+        marker: null,
+        confirmed: false,
+        noneAnswer: wanted === 'none',
+    };
+    _tentQuestions.push(q);
+    _tentRenderCards();
+
+    try {
+        await _tentFetchPOIs(id);
+    } catch (err) {
+        removeTentacleQuestion(id);
+        return null;
+    }
+
+    if (q.noneAnswer) {
+        q.selectedPOI = null;
+    } else {
+        q.selectedPOI =
+            q.fetchedPOIs.find((p) => p.name.trim().toLowerCase() === wanted) ?? null;
+        if (!q.selectedPOI) {
+            removeTentacleQuestion(id);
+            return null;
+        }
+    }
+
+    if (q.marker) {
+        map.removeLayer(q.marker);
+        q.marker = null;
+    }
+    q.confirmed = true;
+    _tentClearLayers(q);
+    _tentRenderCards();
+    if (q.selectedPOI) _tentDraw(id);
+    return id;
 }
