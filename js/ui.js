@@ -240,6 +240,32 @@ function closeErrorPopup() {
     document.getElementById('errorOverlay').style.display = 'none';
 }
 
+// Copy plain text to the clipboard. onDone(ok) reports whether it worked.
+// Shared by the "Ask question" buttons of the question tools.
+function copyText(text, onDone) {
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard
+            .writeText(text)
+            .then(() => onDone(true))
+            .catch(() => onDone(false));
+        return;
+    }
+    // Fallback for older browsers
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        onDone(ok);
+    } catch (_) {
+        onDone(false);
+    }
+}
+
 function copyErrorText() {
     const text = document.getElementById('errorText').textContent;
     const btn = document.getElementById('errorCopyBtn');

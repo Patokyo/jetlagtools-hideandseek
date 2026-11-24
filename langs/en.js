@@ -155,6 +155,7 @@ const LANG_EN = {
     matching_need_layer: 'Choose a POI layer first.',
     matching_need_point: 'Choose a layer and a matching point first.',
     matching_no_layers: 'No cached POI layers available yet. Finish map setup first.',
+    mq_question: 'Matching: Is your closest {0} the {1}?',
     sec_nearest: 'Same Nearest',
     nearest_hint:
         'Select layers in the layer panel. Click 📍 → then click on the map to set a point, or type coordinates directly.',
@@ -186,6 +187,9 @@ const LANG_EN = {
     tent_status_found: '{0} {1} found',
     tent_status_pick: 'Click on the map to set the tentacle center point',
     tent_card_title: 'Tentacles {0}',
+    tent_need_center: 'Set the center point first.',
+    tent_question:
+        'Tentacles: Within {0} of ({1}, {2}), which {3} are you closest to?',
     matching_card_title: 'Matching Q{0}',
     fab_locate_title: 'Show my location',
     status_geo_locating: 'Locating …',
@@ -247,6 +251,11 @@ const LANG_EN = {
     rq_card_title: 'Radar {0}',
     rq_yes: 'Yes',
     rq_no: 'No',
+    btn_ask_question: '📋 Ask question',
+    status_ask_copied: 'Question copied: {0}',
+    status_ask_copy_failed: 'Could not copy the question – copy it manually',
+    rq_question: 'Radar: Are you within {0} of ({1}, {2})?',
+    status_rq_no_spot: 'Pick a spot for the radar first',
     rq_pick_btn: '📍 Pick spot',
     rq_geo_title: 'Use current location (🎯 must be active)',
     rq_set_center: '– click spot on the map –',
@@ -260,9 +269,12 @@ const LANG_EN = {
     BTN_ADD_MEASURING: '+ Add measuring question',
     BTN_CLEAR_MEASURING: 'Remove all measuring',
     MEASURING_CARD_TITLE: 'Measuring Q{0}',
+    meas_question: 'Measuring: Are you closer or further than {0} from a {1}?',
     THERMOMETER: 'Thermometer',
     THERMOMETER_HINT: '"After traveling [distance], am I hotter or colder?"',
     BTN_ADD_THERMOMETER: '+ Add thermometer question',
     BTN_CLEAR_THERMOMETER: 'Remove all thermometer',
     THERM_CARD_TITLE: 'Thermometer Q{0}',
+    therm_question:
+        'Thermometer: After travelling from ({0}, {1}) to ({2}, {3}) are we hotter or colder?',
 };

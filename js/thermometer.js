@@ -489,6 +489,32 @@ function thermUseGeo(id) {
     _thermDrawOcclusion(id);
 }
 
+// Copy a plain-language version of the question, e.g.
+// "Thermometer: After travelling from (13.40500, 52.52000) to (13.45000, 52.54000)
+//  are we hotter or colder?".
+function thermAskQuestion(id) {
+    const q = _thermQuestions.find((x) => x.id === id);
+    if (!q) return;
+    if (q.lat === null || q.lng === null) {
+        setStatus('Set point A first', 'error');
+        return;
+    }
+    if (q.latB === null || q.lngB === null) {
+        setStatus('Set point B first', 'error');
+        return;
+    }
+    const text = tf(
+        'therm_question',
+        q.lng.toFixed(5),
+        q.lat.toFixed(5),
+        q.lngB.toFixed(5),
+        q.latB.toFixed(5),
+    );
+    copyText(text, (ok) =>
+        setStatus(ok ? tf('status_ask_copied', text) : t('status_ask_copy_failed'), ok ? 'ok' : 'error'),
+    );
+}
+
 function thermSetAnswer(id, ans) {
     const q = _thermQuestions.find((x) => x.id === id);
     if (!q) return;
@@ -587,6 +613,9 @@ function _thermRenderCards() {
     </button>
   </div>
   <div class="tent-coord" style="margin-bottom:8px">${esc(coordB)}</div>
+  <div style="margin-bottom:6px">
+    <button class="ghost" style="width:100%;font-size:11px" onclick="thermAskQuestion(${q.id})">${t('btn_ask_question')}</button>
+  </div>
   <div style="display:flex; gap:6px">
     <button class="${q.answer === 'hotter' ? '' : 'ghost'}" style="flex:1; font-size:12px" onclick="thermSetAnswer(${q.id}, 'hotter')">Hotter</button>
     <button class="${q.answer === 'colder' ? '' : 'ghost'}" style="flex:1; font-size:12px" onclick="thermSetAnswer(${q.id}, 'colder')">Colder</button>

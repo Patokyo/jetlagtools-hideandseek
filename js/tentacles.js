@@ -379,6 +379,31 @@ function tentUseGeo(id) {
     _tentSetCenter(q, c.lat, c.lng, id);
 }
 
+// Copy a plain-language version of the question, e.g.
+// "Tentacles: Within 2 km of (13.40500, 52.52000), which Zoo are you closest to?".
+function tentAskQuestion(id) {
+    const q = _tentQuestions.find((x) => x.id === id);
+    if (!q) return;
+    if (!q.poiLayerId) {
+        setStatus(t('matching_need_layer'), 'error');
+        return;
+    }
+    if (q.centerLat === null || q.centerLng === null) {
+        setStatus(t('tent_need_center'), 'error');
+        return;
+    }
+    const text = tf(
+        'tent_question',
+        `${q.radius} ${q.unit}`,
+        q.centerLng.toFixed(5),
+        q.centerLat.toFixed(5),
+        layerQuestionLabel(q.poiLayerId),
+    );
+    copyText(text, (ok) =>
+        setStatus(ok ? tf('status_ask_copied', text) : t('status_ask_copy_failed'), ok ? 'ok' : 'error'),
+    );
+}
+
 function tentSelectPOI(id, val) {
 
     const q = _tentQuestions.find((x) => x.id === id);
@@ -458,6 +483,9 @@ function _tentRenderCards() {
         <select id="tent-poi-select-${q.id}" onchange="tentSelectPOI(${q.id}, this.value)">
                 ${poiOpts}
         </select>
+        <div style="margin-top:6px">
+                <button class="ghost" style="width:100%;font-size:11px" onclick="tentAskQuestion(${q.id})">${t('btn_ask_question')}</button>
+        </div>
 </div>`;
         })
         .join('');

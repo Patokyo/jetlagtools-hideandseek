@@ -246,6 +246,26 @@ function rqUseGeo(id) {
     _rqSetCenter(q, c.lat, c.lng);
 }
 
+// ── "Ask question" text for sharing ──────────────────────────────────────────
+// Copies a plain-language version of the question so it can be pasted into a
+// chat with the hider, e.g. "Are you within 5 km of (151.20930, -33.86880)?".
+function _rqQuestionText(q) {
+    return tf('rq_question', fmtDist(q.km), q.lng.toFixed(5), q.lat.toFixed(5));
+}
+
+function rqAskQuestion(id) {
+    const q = _rqQuestions.find((x) => x.id === id);
+    if (!q) return;
+    if (q.lat === null) {
+        setStatus(t('status_rq_no_spot'), 'error');
+        return;
+    }
+    const text = _rqQuestionText(q);
+    copyText(text, (ok) => {
+        setStatus(ok ? tf('status_ask_copied', text) : t('status_ask_copy_failed'), ok ? 'ok' : 'error');
+    });
+}
+
 // ── Render question cards ─────────────────────────────────────────────────────
 function _rqRenderCards() {
     const el = document.getElementById('rqCards');
@@ -261,10 +281,6 @@ function _rqRenderCards() {
   </div>
 </div>`;
             }
-            const coordTxt =
-                q.lat !== null
-                    ? `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`
-                    : t('rq_set_center');
             const radiusVal = fromKm(q.km);
             return `
 <div class="tent-card" id="rq-${q.id}">
@@ -286,10 +302,12 @@ function _rqRenderCards() {
         
   </div>
   <div class="row" style="margin-bottom:6px">
+    <button class="ghost" style="width:100%;font-size:11px" onclick="rqAskQuestion(${q.id})">${t('btn_ask_question')}</button>
+  </div>
+  <div class="row" style="margin-bottom:6px">
     <button class="rq-ans rq-ans-yes${q.answer === 'yes' ? ' active' : ''}" onclick="rqSetAnswer(${q.id},'yes')">${t('rq_yes')}</button>
     <button class="rq-ans rq-ans-no${q.answer === 'no' ? ' active' : ''}" onclick="rqSetAnswer(${q.id},'no')">${t('rq_no')}</button>
   </div>
-  <div class="tent-coord" style="margin-bottom:0">${esc(coordTxt)}</div>
 </div>`;
         })
         .join('');

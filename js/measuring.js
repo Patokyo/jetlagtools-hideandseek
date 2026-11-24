@@ -144,6 +144,45 @@ function measUseGeo(id) {
     measRun(id);
 }
 
+// Distance from the question point to its closest POI, in km.
+function _measClosestKm(q) {
+    const data = layerDataCache[q.layerId];
+    if (!data || !data.elements || data.elements.length === 0) return null;
+
+    let minKm = Infinity;
+    data.elements.forEach((el) => {
+        const c = getElementCenter(el);
+        if (!c) return;
+        const d = haversineKm({ lat: q.lat, lng: q.lng }, c);
+        if (d < minKm) minKm = d;
+    });
+    return Number.isFinite(minKm) ? minKm : null;
+}
+
+// Copy a plain-language version of the question, e.g.
+// "Measuring: Are you closer or further than 5 km from a Zoo?".
+function measAskQuestion(id) {
+    const q = _measQuestions.find((x) => x.id === id);
+    if (!q) return;
+    if (!q.layerId) {
+        setStatus(t('matching_need_layer'), 'error');
+        return;
+    }
+    if (q.lat === null || q.lng === null) {
+        setStatus(t('matching_need_point'), 'error');
+        return;
+    }
+    const closestKm = _measClosestKm(q);
+    if (closestKm === null) {
+        setStatus(t('matching_no_layers'), 'error');
+        return;
+    }
+    const text = tf('meas_question', fmtDist(closestKm), layerQuestionLabel(q.layerId));
+    copyText(text, (ok) =>
+        setStatus(ok ? tf('status_ask_copied', text) : t('status_ask_copy_failed'), ok ? 'ok' : 'error'),
+    );
+}
+
 function measSetLayer(id, layerId) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;
@@ -222,6 +261,9 @@ function _measRenderCards() {
   </div>
   <div id="meas-coord-${q.id}" class="tent-coord">${esc(coordTxt)}</div>
   <div style="margin-top:6px; font-size:12px; color:#8b949e" id="meas-dist-${q.id}"></div>
+  <div style="margin-top:6px">
+    <button class="ghost" style="width:100%;font-size:11px" onclick="measAskQuestion(${q.id})">${t('btn_ask_question')}</button>
+  </div>
   <div style="display:flex; gap:6px; margin-top:6px">
     <button id="meas-closer-${q.id}" class="${q.answer === 'closer' ? '' : 'ghost'}" style="flex:1; font-size:12px" onclick="measSetAnswer(${q.id}, 'closer')">Closer</button>
     <button id="meas-further-${q.id}" class="${q.answer === 'further' ? '' : 'ghost'}" style="flex:1; font-size:12px" onclick="measSetAnswer(${q.id}, 'further')">Further</button>

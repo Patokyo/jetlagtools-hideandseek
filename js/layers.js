@@ -667,6 +667,37 @@ function clearAllLayers() {
     updateLayerFabBadge();
 }
 
+// ── Layer names in questions ──────────────────────────────────────────────────
+// Questions use the singular layer name ("Zoos" → "Zoo"); the hider side maps
+// that name back to the layer id.
+function layerQuestionLabel(layerId) {
+    const def = LAYER_DEFS[layerId];
+    return _singularLayerLabel(def ? t(def.label) : String(layerId));
+}
+
+function _singularLayerLabel(label) {
+    const str = String(label);
+    if (/ies$/i.test(str)) return str.replace(/ies$/i, 'y');
+    if (/[^s]s$/i.test(str)) return str.slice(0, -1);
+    return str;
+}
+
+function layerIdFromQuestionLabel(label) {
+    const want = String(label || '').trim().toLowerCase();
+    if (!want) return null;
+    return (
+        Object.keys(LAYER_DEFS).find((id) => {
+            const def = LAYER_DEFS[id];
+            const full = def ? t(def.label) : id;
+            return (
+                id.toLowerCase() === want ||
+                full.toLowerCase() === want ||
+                _singularLayerLabel(full).toLowerCase() === want
+            );
+        }) ?? null
+    );
+}
+
 /**
  * Removes POIs from the cache that fall outside the current game zone.
  * Called whenever the game zone is modified during setup.

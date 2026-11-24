@@ -134,6 +134,25 @@ function mqUseGeo(id) {
     mqRun(id);
 }
 
+// Copy a plain-language version of the question, e.g.
+// "Matching: Is your closest Zoo the Koala Park?".
+function mqAskQuestion(id) {
+    const q = _matchingQuestions.find((x) => x.id === id);
+    if (!q) return;
+    if (!q.layerId) {
+        setStatus(t('matching_need_layer'), 'error');
+        return;
+    }
+    if (!q.selectedPoiName) {
+        setStatus(t('matching_need_point'), 'error');
+        return;
+    }
+    const text = tf('mq_question', layerQuestionLabel(q.layerId), q.selectedPoiName);
+    copyText(text, (ok) =>
+        setStatus(ok ? tf('status_ask_copied', text) : t('status_ask_copy_failed'), ok ? 'ok' : 'error'),
+    );
+}
+
 function mqSetAnswer(id, yes) {
     const q = _matchingQuestions.find((x) => x.id === id);
     if (!q) return;
@@ -214,6 +233,9 @@ function _mqRenderCards() {
                         <button class="tent-pick-btn" style="margin-bottom:0" onclick="mqUseGeo(${q.id})" title="${t('rq_geo_title')}" ${disabledAttr}>🎯</button>
     </div>
   <div id="mq-coord-${q.id}" class="tent-coord">${esc(coordTxt)}</div>
+  <div style="margin-top:6px">
+            <button class="ghost" style="width:100%;font-size:11px" onclick="mqAskQuestion(${q.id})">${t('btn_ask_question')}</button>
+  </div>
   <div style="display:flex; gap:6px; margin-top:6px">
             <button id="mq-yes-${q.id}" style="flex:1" onclick="mqSetAnswer(${q.id}, true)" ${disabledAttr}>${t('sl_yes') || 'Yes'}</button>
             <button id="mq-no-${q.id}" class="ghost" style="flex:1" onclick="mqSetAnswer(${q.id}, false)" ${disabledAttr}>${t('sl_no') || 'No'}</button>
@@ -259,6 +281,19 @@ async function mqRun(id) {
         showErrorPopup(t('matching_no_layers'));
         return;
     }
+
+    // The Voronoi cell containing the picked point belongs to the nearest POI;
+    // keep its name so "Ask question" can name it.
+    let nearestPoi = null;
+    let nearestKm = Infinity;
+    pois.forEach((p) => {
+        const d = haversineKm({ lat: q.lat, lng: q.lng }, p);
+        if (d < nearestKm) {
+            nearestKm = d;
+            nearestPoi = p;
+        }
+    });
+    q.selectedPoiName = nearestPoi?.name || '';
 
     // Radius: base on farthest POI from the chosen point to ensure coverage
     let maxKm = 0;
