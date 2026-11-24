@@ -625,6 +625,57 @@ body.setup-mode #layerPanel {
     font-size: 11px;
 }
 
+/* ── Hider Tools: active hiding zone card ─────────── */
+#hider-zone-form[hidden],
+.hider-zone-card[hidden] {
+    display: none;
+}
+
+.hider-zone-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    background: rgba(13, 17, 23, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+}
+
+.hider-zone-card-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.hider-zone-station {
+    font-size: 13px;
+    font-weight: 700 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hider-zone-distance {
+    margin-top: 2px;
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+#sidebar .section.hider .hider-zone-eye {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    flex-shrink: 0;
+    border-radius: 6px;
+    opacity: 0.85;
+}
+
+#sidebar .section.hider .hider-zone-eye:hover,
+#sidebar .section.hider .hider-zone-eye:focus-visible {
+    opacity: 1;
+}
+
 /* ── Form controls ────────────────────────────────── */
 .row {
     display: flex;

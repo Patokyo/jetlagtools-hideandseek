@@ -4,7 +4,8 @@ let _hiderSelectedLayer = null;
 let _hiderRefPoint = null; // {lat, lng}
 let _hiderMarker = null;
 let _hiderZoneLayer = null;
-let _hiderZoneData = null; // { lat, lng, radiusKm } — kept so the zone can be auto-saved
+let _hiderZoneOutlineLayer = null; // dotted boundary shown while the occlusion is hidden
+let _hiderZoneData = null; // { lat, lng, radiusKm, stationName, occluded } — auto-saved
 let _hiderStations = []; // [{ idx, name }] sorted alphabetically
 let _hiderSelectedIdx = null; // index into layerDataCache.stations.elements
 let _hiderHighlight = -1; // keyboard-highlighted row in the dropdown
@@ -290,8 +291,9 @@ function hiderCreateZone() {
         return;
     }
 
-    if (hiderDrawZone(center.lat, center.lng, radiusKm, true)) {
-        setStatus(`Hiding zone created around ${esc(el.name || 'Station')}`, 'ok');
+    const stationName = el.name || 'Station';
+    if (hiderDrawZone(center.lat, center.lng, radiusKm, true, stationName)) {
+        setStatus(`Hiding zone created around ${esc(stationName)}`, 'ok');
     } else {
         setStatus('Failed to create hiding zone', 'error');
     }
@@ -299,10 +301,14 @@ function hiderCreateZone() {
 
 // Draws the inverted "hiding zone" mask around a point. `fit` zooms to the
 // zone; restoring a saved zone leaves the restored map view alone.
-function hiderDrawZone(lat, lng, radiusKm, fit) {
+function hiderDrawZone(lat, lng, radiusKm, fit, stationName = '', occluded = true) {
     if (_hiderZoneLayer) {
         map.removeLayer(_hiderZoneLayer);
         _hiderZoneLayer = null;
+    }
+    if (_hiderZoneOutlineLayer) {
+        map.removeLayer(_hiderZoneOutlineLayer);
+        _hiderZoneOutlineLayer = null;
     }
 
     // Turf.js uses [lng, lat] for points
@@ -313,8 +319,19 @@ function hiderDrawZone(lat, lng, radiusKm, fit) {
     if (!occlusionLayer) return false;
 
     _hiderZoneLayer = occlusionLayer;
-    _hiderZoneData = { lat, lng, radiusKm };
-    _hiderZoneLayer.addTo(map);
+    _hiderZoneData = {
+        lat,
+        lng,
+        radiusKm,
+        stationName: stationName || '',
+        occluded: !!occluded,
+    };
+
+    if (_hiderZoneData.occluded) {
+        _hiderZoneLayer.addTo(map);
+    } else {
+        _hiderZoneOutlineLayer = _hiderCreateZoneOutline(lat, lng, radiusKm).addTo(map);
+    }
 
     if (fit) {
         // Zoom to the zone itself — the inverted mask's own bounds cover the world
@@ -324,14 +341,105 @@ function hiderDrawZone(lat, lng, radiusKm, fit) {
             { maxZoom: 17 }
         );
     }
+
+    hiderRenderZoneCard();
     return true;
 }
 
+// Replace the creation form with a compact station/radius card once a zone exists.
+function hiderRenderZoneCard() {
+    const form = document.getElementById('hider-zone-form');
+    const card = document.getElementById('hider-zone-summary');
+    if (!form || !card) return;
+
+    const zone = _hiderZoneData;
+    form.hidden = !!zone;
+    card.hidden = !zone;
+    if (!zone) {
+        card.innerHTML = '';
+        return;
+    }
+
+    const station = zone.stationName || 'Hiding station';
+    const action = zone.occluded
+        ? 'Hide hiding zone occlusion'
+        : 'Show hiding zone occlusion';
+    card.innerHTML = `
+        <div class="hider-zone-card-text">
+            <div class="hider-zone-station">${esc(station)}</div>
+            <div class="hider-zone-distance">${fmtDist(zone.radiusKm)}</div>
+        </div>
+        <button
+            type="button"
+            class="layer-eye hider-zone-eye"
+            title="${action}"
+            aria-label="${action}"
+            aria-pressed="${!zone.occluded}"
+            onclick="hiderToggleZoneOcclusion()"
+        >${zone.occluded ? LAYER_EYE_ICON : LAYER_EYE_OFF_ICON}</button>
+    `;
+}
+
+// Dotted circle that keeps the hiding zone visible while its occlusion is off.
+function _hiderCreateZoneOutline(lat, lng, radiusKm) {
+    return L.circle([lat, lng], {
+        radius: radiusKm * 1000,
+        color: '#f59e0b',
+        weight: 2.5,
+        opacity: 0.95,
+        fill: false,
+        dashArray: '6 8',
+        interactive: false,
+    });
+}
+
+function hiderSetZoneOccluded(occluded) {
+    if (!_hiderZoneData || !_hiderZoneLayer) return false;
+    _hiderZoneData.occluded = !!occluded;
+
+    if (_hiderZoneData.occluded) {
+        if (_hiderZoneOutlineLayer) {
+            map.removeLayer(_hiderZoneOutlineLayer);
+            _hiderZoneOutlineLayer = null;
+        }
+        if (!map.hasLayer(_hiderZoneLayer)) _hiderZoneLayer.addTo(map);
+    } else {
+        if (map.hasLayer(_hiderZoneLayer)) map.removeLayer(_hiderZoneLayer);
+        if (!_hiderZoneOutlineLayer) {
+            _hiderZoneOutlineLayer = _hiderCreateZoneOutline(
+                _hiderZoneData.lat,
+                _hiderZoneData.lng,
+                _hiderZoneData.radiusKm
+            ).addTo(map);
+        }
+    }
+
+    hiderRenderZoneCard();
+    return _hiderZoneData.occluded;
+}
+
+function hiderToggleZoneOcclusion() {
+    if (!_hiderZoneData) return;
+    const occluded = hiderSetZoneOccluded(!_hiderZoneData.occluded);
+    setStatus(
+        occluded ? 'Hiding zone occlusion shown' : 'Hiding zone outline shown',
+        'ok'
+    );
+}
+
 function hiderClearZone() {
+    const hadZone = !!_hiderZoneData;
     if (_hiderZoneLayer) {
         map.removeLayer(_hiderZoneLayer);
         _hiderZoneLayer = null;
-        _hiderZoneData = null;
+    }
+    if (_hiderZoneOutlineLayer) {
+        map.removeLayer(_hiderZoneOutlineLayer);
+        _hiderZoneOutlineLayer = null;
+    }
+    _hiderZoneData = null;
+    hiderRenderZoneCard();
+    if (hadZone) {
         setStatus('Hiding zone removed', 'ok');
     } else {
         setStatus('No hiding zone to remove', 'error');
@@ -810,7 +918,14 @@ function hiderImportState(state) {
 
     const zone = state.zone;
     if (zone && Number.isFinite(zone.lat) && Number.isFinite(zone.lng) && zone.radiusKm > 0) {
-        hiderDrawZone(zone.lat, zone.lng, zone.radiusKm, false);
+        hiderDrawZone(
+            zone.lat,
+            zone.lng,
+            zone.radiusKm,
+            false,
+            zone.stationName || '',
+            zone.occluded !== false
+        );
     }
 
     const select = document.getElementById('hider-layer-select');
