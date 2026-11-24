@@ -1007,6 +1007,18 @@ select:focus {
     border-color: #f0883e;
 }
 
+/* iOS Safari zooms the page when a focused field's text is under 16px.
+   Use 16px on iOS touch devices only; Android and desktop keep their sizes. */
+@supports (-webkit-touch-callout: none) {
+    @media (pointer: coarse) {
+        input[type='text'],
+        input[type='number'],
+        select {
+            font-size: 16px;
+        }
+    }
+}
+
 /* ── Radius km-Labels ────────────────────────────── */
 .radius-km-label span {
     font-size: 10px;
