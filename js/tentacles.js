@@ -380,7 +380,7 @@ function tentUseGeo(id) {
 }
 
 // Copy a plain-language version of the question, e.g.
-// "Tentacles: Within 2 km of (13.40500, 52.52000), which Zoo are you closest to?".
+// "Tentacles - Within 2 km of (13.40500, 52.52000), which Zoo are you closest to?".
 function tentAskQuestion(id) {
     const q = _tentQuestions.find((x) => x.id === id);
     if (!q) return;

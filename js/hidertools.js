@@ -340,7 +340,7 @@ function hiderClearZone() {
 
 // ── Answer a question taken from the clipboard ───────────────────────────────
 // The seekers' "Ask question" button copies a text such as
-// "Radar: Are you within 5 km of (151.20930, -33.86880)?". The hider reads it
+// "Radar - Are you within 5 km of (151.20930, -33.86880)?". The hider reads it
 // here, marks their own position (current location or a map click) and gets the
 // yes/no answer that fits that position.
 let _hiderAnswerQuestion = null; // parsed question: { type, text, km, lat, lng }
@@ -357,10 +357,10 @@ function _hiderDistanceKm(amount, unit) {
 }
 
 // Reads the question type from the first word, then the numbers that type
-// needs. Supported: radar, matching, measuring.
+// needs. The type is followed by " - "; the old ":" separator is still read.
 function hiderParseQuestion(text) {
     const str = String(text || '').trim();
-    const head = str.match(/^([^\s:]+)\s*:\s*(.*)$/s);
+    const head = str.match(/^([^\s:]+)\s*[-:]\s*(.*)$/s);
     if (!head) return null;
 
     const type = head[1].toLowerCase();

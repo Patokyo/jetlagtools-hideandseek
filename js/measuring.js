@@ -147,7 +147,7 @@ function _measClosestKm(q) {
 }
 
 // Copy a plain-language version of the question, e.g.
-// "Measuring: Are you closer or further than 5 km from a Zoo?".
+// "Measuring - Are you closer or further than 5 km from a Zoo?".
 function measAskQuestion(id) {
     const q = _measQuestions.find((x) => x.id === id);
     if (!q) return;

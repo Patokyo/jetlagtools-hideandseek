@@ -551,7 +551,7 @@ function thermUseGeo(id) {
 }
 
 // Copy a plain-language version of the question, e.g.
-// "Thermometer: After travelling from (13.40500, 52.52000) to (13.45000, 52.54000)
+// "Thermometer - After travelling from (13.40500, 52.52000) to (13.45000, 52.54000)
 //  are we hotter or colder?".
 function thermAskQuestion(id) {
     const q = _thermQuestions.find((x) => x.id === id);

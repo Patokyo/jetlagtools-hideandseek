@@ -122,7 +122,7 @@ function mqUseGeo(id) {
 }
 
 // Copy a plain-language version of the question, e.g.
-// "Matching: Is your closest Zoo the Koala Park?".
+// "Matching - Is your closest Zoo the Koala Park?".
 function mqAskQuestion(id) {
     const q = _matchingQuestions.find((x) => x.id === id);
     if (!q) return;
