@@ -19,9 +19,6 @@ addMapClickHook((e) => {
     q.lat = e.latlng.lat;
     q.lng = e.latlng.lng;
 
-    const coordEl = document.getElementById(`mq-coord-${id}`);
-    if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
-
     document.getElementById(`mq-pick-btn-${id}`)?.classList.remove('meas-active');
     setStatus('', '');
 
@@ -59,17 +56,10 @@ function _mqCreateDraggableMarker(q, id) {
 
     q.marker = createDraggableMarker([q.lat, q.lng]).addTo(map);
 
-    q.marker.on('drag', (e) => {
-        const pos = getMarkerPosition(e.target);
-        const coordEl = document.getElementById(`mq-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
-    });
     q.marker.on('dragend', (e) => {
         const pos = getMarkerPosition(e.target);
         q.lat = pos.lat;
         q.lng = pos.lng;
-        const coordEl = document.getElementById(`mq-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
         // Re-run matching to update mask/outlines for the new location
         mqRun(id);
     });
@@ -124,9 +114,6 @@ function mqUseGeo(id) {
     const c = geoMarker.getLatLng();
     q.lat = c.lat;
     q.lng = c.lng;
-
-    const coordEl = document.getElementById(`mq-coord-${id}`);
-    if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
 
     _mqRenderCards();
     // Create draggable marker immediately so users can refine the picked location
@@ -212,7 +199,6 @@ function _mqRenderCards() {
                       .join('')
                 : '';
 
-            const coordTxt = q.lat !== null ? `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E` : t('matching_pick');
             const disabledAttr = q.confirmed ? 'disabled' : '';
 
                         return `
@@ -232,7 +218,6 @@ function _mqRenderCards() {
                         <button id="mq-pick-btn-${q.id}" class="tent-pick-btn" style="margin-bottom:0" onclick="mqStartPick(${q.id})" ${disabledAttr}>${t('matching_pick')}</button>
                         <button class="tent-pick-btn" style="margin-bottom:0" onclick="mqUseGeo(${q.id})" title="${t('rq_geo_title')}" ${disabledAttr}>🎯</button>
     </div>
-  <div id="mq-coord-${q.id}" class="tent-coord">${esc(coordTxt)}</div>
   <div style="margin-top:6px">
             <button class="ghost" style="width:100%;font-size:11px" onclick="mqAskQuestion(${q.id})">${t('btn_ask_question')}</button>
   </div>

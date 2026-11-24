@@ -585,8 +585,6 @@ function _thermRenderCards() {
                 </div>`;
             }
 
-            const coordA = q.lat !== null ? `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E` : t('matching_pick');
-            const coordB = q.latB !== null ? `${q.latB.toFixed(5)}° N  ${q.lngB.toFixed(5)}° E` : '– pick point B –';
 
             return `
 <div class="tent-card" id="therm-${q.id}">
@@ -606,13 +604,11 @@ function _thermRenderCards() {
     <button id="therm-pick-a-${q.id}" class="tent-pick-btn" style="flex:1" onclick="thermStartPickA(${q.id})">${t('matching_pick')}</button>
     <button class="tent-pick-btn" style="flex:1" onclick="thermUseGeo(${q.id})" title="${t('rq_geo_title')}">🎯</button>
   </div>
-  <div class="tent-coord" style="margin-bottom:4px">${esc(coordA)}</div>
   <div class="row" style="margin-bottom:6px">
     <button id="therm-pick-b-${q.id}" class="tent-pick-btn" style="width:100%" onclick="thermStartPickB(${q.id})">
       Set second point (exactly ${q.dist}km away)
     </button>
   </div>
-  <div class="tent-coord" style="margin-bottom:8px">${esc(coordB)}</div>
   <div style="margin-bottom:6px">
     <button class="ghost" style="width:100%;font-size:11px" onclick="thermAskQuestion(${q.id})">${t('btn_ask_question')}</button>
   </div>

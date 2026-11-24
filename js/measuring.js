@@ -27,9 +27,6 @@ addMapClickHook((e) => {
     q.lat = e.latlng.lat;
     q.lng = e.latlng.lng;
 
-    const coordEl = document.getElementById(`meas-coord-${id}`);
-    if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
-
     document.getElementById(`meas-pick-btn-${id}`)?.classList.remove('meas-active');
     setStatus('', '');
 
@@ -58,17 +55,10 @@ function _measCreateDraggableMarker(q, id) {
 
     q.marker = createDraggableMarker([q.lat, q.lng]).addTo(map);
 
-    q.marker.on('drag', (e) => {
-        const pos = getMarkerPosition(e.target);
-        const coordEl = document.getElementById(`meas-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${pos.lat.toFixed(5)}° N  ${pos.lng.toFixed(5)}° E`;
-    });
     q.marker.on('dragend', (e) => {
         const pos = getMarkerPosition(e.target);
         q.lat = pos.lat;
         q.lng = pos.lng;
-        const coordEl = document.getElementById(`meas-coord-${id}`);
-        if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
         measRun(id);
     });
 }
@@ -134,9 +124,6 @@ function measUseGeo(id) {
     const c = geoMarker.getLatLng();
     q.lat = c.lat;
     q.lng = c.lng;
-
-    const coordEl = document.getElementById(`meas-coord-${id}`);
-    if (coordEl) coordEl.textContent = `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E`;
 
     _measRenderCards();
     // Create draggable marker immediately so users can refine the picked location
@@ -240,7 +227,6 @@ function _measRenderCards() {
                 })
                 .join('');
 
-            const coordTxt = q.lat !== null ? `${q.lat.toFixed(5)}° N  ${q.lng.toFixed(5)}° E` : t('matching_pick');
 
             return `
 <div class="tent-card" id="meas-${q.id}">
@@ -259,7 +245,6 @@ function _measRenderCards() {
     <button id="meas-pick-btn-${q.id}" class="tent-pick-btn" style="margin-bottom:0" onclick="measStartPick(${q.id})">${t('matching_pick')}</button>
     <button class="tent-pick-btn" style="margin-bottom:0" onclick="measUseGeo(${q.id})" title="${t('rq_geo_title')}">🎯</button>
   </div>
-  <div id="meas-coord-${q.id}" class="tent-coord">${esc(coordTxt)}</div>
   <div style="margin-top:6px; font-size:12px; color:#8b949e" id="meas-dist-${q.id}"></div>
   <div style="margin-top:6px">
     <button class="ghost" style="width:100%;font-size:11px" onclick="measAskQuestion(${q.id})">${t('btn_ask_question')}</button>
