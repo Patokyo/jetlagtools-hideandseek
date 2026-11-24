@@ -511,20 +511,6 @@
 
       </div>
 
-      <!-- Changelog -->
-      <div class="section cl-section">
-        <details class="layers-details">
-          <summary class="section-title" style="margin-bottom: 0">
-            <span data-i18n="sec_changelog">Changelog</span>
-            <span class="cl-badge"
-              ><span data-i18n="changelog_last">Last update:</span>
-              <span id="changelogLastDate"></span
-            ></span>
-          </summary>
-          <div id="changelogList" class="cl-list"></div>
-        </details>
-      </div>
-
       <div id="status">Bereit</div>
     </div>
 
@@ -1086,8 +1072,6 @@
     <script src="js/hidertools.js"></script>
     <script src="js/statefile.js"></script>
     <!-- state export/import + local auto-save       -->
-    <script src="js/changelog.js"></script>
-    <!-- changelog entries                           -->
 
     <script>
       // Initialisation
@@ -1098,7 +1082,6 @@
       renderSetupPoiLayerList();
       renderGamePoiLayerPanel();
       restoreSavedState();
-      renderChangelog();
     </script>
   </body>
 </html>

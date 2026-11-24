@@ -169,8 +169,6 @@ const LANG_DE = {
     nc_pick_title:        'Auf der Karte klicken',
     status_nc_a:          'Punkt A auf der Karte klicken',
     status_nc_b:          'Punkt B auf der Karte klicken',
-    sec_changelog:        'Changelog',
-    changelog_last:       'Letztes Update:',
     sec_questions:        'Tentakel',
     btn_add_question:     '+ Tentakel hinzufügen',
     tent_kilometers:      'Kilometer',

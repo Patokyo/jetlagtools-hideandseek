@@ -171,8 +171,6 @@ const LANG_EN = {
     nc_pick_title: 'Click on the map',
     status_nc_a: 'Click point A on the map',
     status_nc_b: 'Click point B on the map',
-    sec_changelog: 'Changelog',
-    changelog_last: 'Last update:',
     sec_questions: 'Tentacles',
     btn_add_question: '+ Add Tentacle',
     tent_kilometers: 'Kilometers',

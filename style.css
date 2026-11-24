@@ -268,7 +268,6 @@ body.setup-mode #layerPanel {
 
 /* Cards and small panels inside non-colored sidebar sections */
 #sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .tent-card,
-#sidebar .cl-entry,
 #sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .tent-coord,
 #sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .sl-list,
 #sidebar .section:not(.matching):not(.measuring):not(.thermometer):not(.radar):not(.photos):not(.tentacles):not(.hider) .radius-item,
@@ -290,7 +289,6 @@ body.setup-mode #layerPanel {
 
 /* Muted / small text: dark on light backgrounds, non-bold */
 #sidebar small,
-#sidebar .cl-badge,
 #sidebar .layer-count,
 #sidebar .np-label,
 #sidebar .nc-lbl,
@@ -502,7 +500,6 @@ body.setup-mode #layerPanel {
 
 /* Small / muted text: white on dark/colored backgrounds, black on white backgrounds, non-bold */
 #sidebar small,
-#sidebar .cl-badge,
 #sidebar .layer-count,
 #sidebar .np-label,
 #sidebar .nc-lbl,
@@ -517,7 +514,6 @@ body.setup-mode #layerPanel {
 
 /* Override muted text to white when inside colored sidebar sections */
 #sidebar .section.matching small,
-#sidebar .section.matching .cl-badge,
 #sidebar .section.matching .layer-count,
 #sidebar .section.matching .np-label,
 #sidebar .section.matching .nc-lbl,
@@ -527,7 +523,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.matching .coord-display,
 #sidebar .section.matching .popup-coords,
 #sidebar .section.measuring small,
-#sidebar .section.measuring .cl-badge,
 #sidebar .section.measuring .layer-count,
 #sidebar .section.measuring .np-label,
 #sidebar .section.measuring .nc-lbl,
@@ -537,7 +532,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.measuring .coord-display,
 #sidebar .section.measuring .popup-coords,
 #sidebar .section.thermometer small,
-#sidebar .section.thermometer .cl-badge,
 #sidebar .section.thermometer .layer-count,
 #sidebar .section.thermometer .np-label,
 #sidebar .section.thermometer .nc-lbl,
@@ -547,7 +541,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.thermometer .coord-display,
 #sidebar .section.thermometer .popup-coords,
 #sidebar .section.radar small,
-#sidebar .section.radar .cl-badge,
 #sidebar .section.radar .layer-count,
 #sidebar .section.radar .np-label,
 #sidebar .section.radar .nc-lbl,
@@ -557,7 +550,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.radar .coord-display,
 #sidebar .section.radar .popup-coords,
 #sidebar .section.photos small,
-#sidebar .section.photos .cl-badge,
 #sidebar .section.photos .layer-count,
 #sidebar .section.photos .np-label,
 #sidebar .section.photos .nc-lbl,
@@ -567,7 +559,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.photos .coord-display,
 #sidebar .section.photos .popup-coords,
 #sidebar .section.tentacles small,
-#sidebar .section.tentacles .cl-badge,
 #sidebar .section.tentacles .layer-count,
 #sidebar .section.tentacles .np-label,
 #sidebar .section.tentacles .nc-lbl,
@@ -577,7 +568,6 @@ body.setup-mode #layerPanel {
 #sidebar .section.tentacles .coord-display,
 #sidebar .section.tentacles .popup-coords,
 #sidebar .section.hider small,
-#sidebar .section.hider .cl-badge,
 #sidebar .section.hider .layer-count,
 #sidebar .section.hider .np-label,
 #sidebar .section.hider .nc-lbl,
@@ -1606,13 +1596,6 @@ button.meas-active:hover {
         margin-top: 64px;
     }
 
-    /* The on-screen keyboard shrinks the visual viewport while the sidebar
-       keeps its full height, so the pinned changelog is panned up over the
-       form controls. Hide it until the keyboard is dismissed. */
-    body.keyboard-open .cl-section {
-        display: none;
-    }
-
     /* Mobile status toast: mirrors #status next to the menu button */
     #statusToast.show {
         display: flex;
@@ -1988,63 +1971,6 @@ button.meas-active:hover {
     font-size: 11px;
     color: #484f58;
     text-align: center;
-}
-
-/* ── Changelog ───────────────────────────────────── */
-.cl-section {
-    width: 100%;
-    background: rgba(22, 27, 34, 0.95);
-    border-top: 1px solid #30363d;
-    border-radius: 0;
-    box-shadow: none;
-    backdrop-filter: none;
-    flex-shrink: 0;
-}
-
-.cl-section details {
-    padding: 8px 10px 10px;
-}
-
-.cl-section summary {
-    padding: 0;
-}
-
-.cl-badge {
-    display: block;
-    font-size: 10px;
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: 0;
-    color: #484f58;
-    margin-top: 2px;
-}
-
-.cl-list {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.cl-entry {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding: 5px 7px;
-    background: #0d1117;
-    border: 1px solid #21262d;
-    border-radius: 5px;
-}
-
-.cl-date {
-    font-size: 10px;
-    color: #484f58;
-}
-
-.cl-text {
-    font-size: 12px;
-    color: #c9d1d9;
-    line-height: 1.4;
 }
 
 /* ── Tentacles ────────────────────────────────────── */
