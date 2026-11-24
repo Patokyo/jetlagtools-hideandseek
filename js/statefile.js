@@ -300,8 +300,7 @@ async function importMapState(state) {
 // ── Local auto-save (this browser only) ──────────────────────────────────────
 // A phone can discard the page while it sits in the background, so the current
 // state is mirrored into IndexedDB and restored on the next load. Nothing is
-// uploaded and nothing is shared between devices or browsers; "Reset
-// everything" deletes the copy.
+// uploaded and nothing is shared between devices or browsers.
 const AUTOSAVE_DB = 'hideandseek-map';
 const AUTOSAVE_STORE = 'state';
 const AUTOSAVE_KEY = 'last';

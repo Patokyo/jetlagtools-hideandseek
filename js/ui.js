@@ -113,25 +113,17 @@ function initColorMode() {
     });
 }
 
-// ── Global reset: clear every tool, drawn layer and marker ────────────────────
-// Keeps preferences (language, units, map style, colour mode) and the city.
-function clearAll() {
-    clearMeasure();
-    clearAdminCheck();
-    clearNearestChecker();
-    clearStationLength();
-    clearGameZone();
-    clearNearestPOI();
+// ── Clear open questions and hiding zone ─────────────────────────────────────
+// Keeps the imported map state (city, layers, game area and routes) intact.
+function clearAllQuestions() {
     clearAllTentacles();
-    clearAllBusRoutes();
     clearAllRadiusQuestions();
     clearAllMatchingQuestions();
     clearAllMeasuringQuestions();
     clearAllThermometerQuestions();
-    clearAllLayers();
-    clearAllBoundaryLayers();
-    clearAutoSave();
-    setStatus(t('status_all_cleared'), 'ok');
+    hiderClearZone();
+    setStatus(t('status_questions_cleared'), 'ok');
+    scheduleAutosave();
 }
 
 // ── Map style popover ─────────────────────────────────────────────────────────
