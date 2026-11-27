@@ -53,6 +53,10 @@ Creates radius around station the hider chooses.
 
 Helpful for answering matching and measuring questions. Choose a cached POI layer and your location and displays the closest POI of that layer and how far away it is.
 
+### Answer question
+
+Paste or enter a seeker's question in plain language and the app adds the matching question (matching, measuring, thermometer, radar or tentacles) with the answer already applied, so the map is narrowed down without touching the individual question tools.
+
 ---
 
 ## Tech Stack
@@ -74,9 +78,10 @@ No build step, no bundler, no framework. Just HTML + CSS + vanilla JS.
 ## Project Structure
 
 ```text
-hideandseek-map/
+jetlagtools-hideandseek/
 ├── index.html          # Shell: HTML layout + <script> load order
 ├── style.css           # All styles (sidebar, map, print)
+├── runserver.py        # Dependency-free local server (python3 runserver.py)
 │
 ├── langs/
 │   ├── de.js           # German translations (LANG_DE object)
@@ -85,17 +90,24 @@ hideandseek-map/
 └── js/
     ├── config.js       # Constants: tile URLs, COLOR_THEMES (default + colorblind), Overpass endpoints
     ├── i18n.js         # t(), tf(), switchLang(), applyI18n()
-    ├── map.js          # Leaflet map init + setTileLayer()
+    ├── map.js          # Leaflet map init, setTileLayer(), map click hook registry
     ├── overpass.js     # overpassFetch() – POST with endpoint fallback
-    ├── renderers.js    # renderPLZ(), renderPOIs(), renderWater(), renderCityBoundary()
+    ├── renderers.js    # renderPLZ(), renderPOIs(), renderWater(), renderCityBoundary() + data normalisation
     ├── layers.js       # LAYER_DEFS (all POI filters) + layer management + recolorActiveLayers()
     ├── city.js         # searchCity() + km/mi unit helpers (stores OSM relation ID)
-    ├── busroutes.js    # Bus/tram route line tool
-    ├── radius.js       # Radius / interval circle tool (draggable)
-    ├── measure.js      # Distance & bearing tool + map click handler (draggable)
-    ├── boundarylayers.js # nominatimBoundaryLayer() – fetch + draw OSM boundary polygons
-    ├── admin.js        # Administrative division checker (reverse-geocode + level comparison)
-    ├── tentacles.js    # Tentacle / Voronoi question tool
+    ├── gamezone.js     # Allowed game area: geocoded/drawn areas + dimming mask
+    ├── busroutes.js    # Bus/tram/train route line tool
+    ├── measure.js      # Distance & bearing tool (points A/B, bisector, map click handler)
+    ├── marker.js       # Shared draggable marker helper
+    ├── occlusion.js    # createOcclusionLayer() – the inverted mask every question tool draws with
+    ├── boundarylayers.js # nominatimBoundaryLayer() – OSM boundary polygons from the style popover
+    ├── geolocate.js    # Live position marker (🎯 FAB)
+    ├── matching.js     # Matching question (Voronoi cell of the nearest POI)
+    ├── measuring.js    # Measuring question (closer/further than a POI layer)
+    ├── thermometer.js  # Thermometer question (spherical bisector of A → B)
+    ├── radar.js        # Radar question (yes/no radius circles)
+    ├── tentacles.js    # Tentacle question (POIs inside a radius, Voronoi)
+    ├── hidertools.js   # Hider side: hiding zone, nearest POI, answer question
     ├── statefile.js    # Export/import state + local auto-save (IndexedDB)
     └── ui.js           # Sidebar, print, error popup, style FAB, setColorMode()
 ```
@@ -111,8 +123,8 @@ Colour definitions live in **`js/config.js`** inside `COLOR_THEMES`. Both `defau
 No install needed.
 
 ```bash
-git clone https://github.com/cniehaus/hideandseek-map.git
-cd hideandseek-map
+git clone https://github.com/Patokyo/jetlagtools-hideandseek.git
+cd jetlagtools-hideandseek
 ```
 
 **Do not open `index.html` directly** (e.g. by double-clicking it). When a page is loaded via `file://`, browsers send requests with `Origin: null`, and external APIs like Nominatim and the Overpass API will reject them — so no data will load.

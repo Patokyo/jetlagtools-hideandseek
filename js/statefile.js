@@ -148,22 +148,10 @@ async function importGameState(state) {
     );
 }
 
+// Map-only and game-state files share one format, so both file inputs use the
+// same importer.
 function handleImportStateFile(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-        try {
-            // Handles map-only files and game-state files (map + questions)
-            await importGameState(JSON.parse(reader.result));
-            saveStateNow();
-        } catch (err) {
-            showErrorPopup('Invalid state file');
-        }
-    };
-    reader.readAsText(f);
-    // reset input so selecting same file again triggers change
-    e.target.value = '';
+    handleImportGameStateFile(e);
 }
 
 async function importMapState(state) {

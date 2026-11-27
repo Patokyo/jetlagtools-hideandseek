@@ -262,7 +262,7 @@ function hiderCalculateNearest() {
     if (nearest) {
         const name = nearest.name || 'Unnamed POI';
         document.getElementById('hider-result').innerHTML =
-            `Nearest: <strong>${esc(name)}</strong><br>${minDist.toFixed(3)} km away`;
+            `Nearest: <strong>${esc(name)}</strong><br>${fmtDist(minDist)} away`;
     } else {
         document.getElementById('hider-result').innerHTML = 'No valid POIs found';
     }
@@ -293,7 +293,7 @@ function hiderCreateZone() {
 
     const stationName = el.name || 'Station';
     if (hiderDrawZone(center.lat, center.lng, radiusKm, true, stationName)) {
-        setStatus(`Hiding zone created around ${esc(stationName)}`, 'ok');
+        setStatus(`Hiding zone created around ${stationName}`, 'ok');
     } else {
         setStatus('Failed to create hiding zone', 'error');
     }

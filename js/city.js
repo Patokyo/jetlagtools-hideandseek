@@ -50,6 +50,9 @@ async function searchCity() {
                     addressdetails: 1,
                 }),
         );
+        // Nominatim rate-limits (HTTP 429) instead of returning an empty list;
+        // surfacing the status beats a confusing JSON parse error.
+        if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`);
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) {

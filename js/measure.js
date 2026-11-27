@@ -170,9 +170,7 @@ function redrawMeasComputed() {
 // ── Map click handler ─────────────────────────────────────────────────────────
 // Handles measurement points A and B; otherwise sets the radius centre.
 map.on('click', (e) => {
-    // Admin division checker takes priority
-    if (adminHandleClick(e)) return;
-    // Feature-registered click hooks (nearestchecker, nearestpoi, …)
+    // Feature-registered click hooks (question tools, hider tools, …)
     for (const hook of _mapClickHooks) {
         if (hook(e)) return;
     }

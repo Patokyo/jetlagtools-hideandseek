@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://cniehaus.github.io/hideandseek-map/sitemap.xml
+Sitemap: https://patokyo.github.io/jetlagtools-hideandseek/sitemap.xml

@@ -101,6 +101,7 @@ async function addGameZoneArea() {
         const res = await fetch(
             'https://nominatim.openstreetmap.org/search?' + new URLSearchParams(params),
         );
+        if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`);
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) {

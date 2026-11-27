@@ -1,6 +1,5 @@
 node_modules/
 cache/*.json
-langs/de.js
 .smbdelete*
 js/.smbdeleteAAA0dfd4.4
 langs/.smbdeleteAAA0dfd4.4
