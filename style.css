@@ -1126,6 +1126,17 @@ button.meas-active:hover {
     cursor: grabbing;
 }
 
+/* ── Shared draggable markers ──────────────────────── */
+/* The hit area is padded so it can be grabbed with a finger; touch-action
+   stops the browser from treating the touch as a page pan instead. */
+.shared-draggable-marker-hit {
+    cursor: grab;
+    touch-action: none;
+}
+.shared-draggable-marker-hit:active {
+    cursor: grabbing;
+}
+
 /* ── Click-point crosshair marker ──────────────────── */
 .click-marker-icon {
     width: 22px;
